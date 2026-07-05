@@ -1,0 +1,545 @@
+/* ============================================================
+   Growing Seed — Gameplay Sandbox
+   Single consolidated design-token system (fixes duplicate :root
+   and mixed purple/green branding found in the original build).
+   ============================================================ */
+
+:root {
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-soft: #f7fcf7;
+  --surface-mute: #eff6ef;
+  --bg-top: #eef7ff;
+  --bg-mid: #e7f5eb;
+  --bg-bottom: #dfeef4;
+
+  /* Text */
+  --text-primary: #1d2a22;
+  --text-secondary: #4f6557;
+  --text-muted: #6b7a6d;
+
+  /* Brand — unified green (auth-era purple removed) */
+  --accent: #3a9e4f;
+  --accent-strong: #2b7441;
+  --accent-soft: #ecf8ed;
+  --accent-gradient: linear-gradient(135deg, #4dbd72 0%, #2f8552 100%);
+
+  /* Action accent colors — one per mechanic, used across
+     button, popup and particle so each action reads distinctly */
+  --c-water: #3e8ede;
+  --c-water-soft: #e6f2fc;
+  --c-protect: #d4a017;
+  --c-protect-soft: #fbf1d8;
+  --c-fertilize: #4caf50;
+  --c-fertilize-soft: #e9f7ea;
+  --c-fight: #e0622f;
+  --c-fight-soft: #fdece3;
+  --c-endure: #2f8f8f;
+  --c-endure-soft: #e3f4f4;
+  --c-giveup: #7a7a7a;
+  --c-giveup-soft: #efefef;
+  --danger: #c63e38;
+  --warning: #a56100;
+
+  /* Buttons */
+  --button-radius: 16px;
+  --button-shadow: 0 12px 26px rgba(46, 86, 56, 0.16);
+
+  /* Layout */
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --shadow-card: 0 10px 28px rgba(21, 40, 28, 0.08);
+
+  /* Z-index scale (fixes the original conflicting .modal declarations) */
+  --z-base: 1;
+  --z-nav: 200;
+  --z-modal: 900;
+  --z-toast: 1000;
+  --z-celebration: 1200;
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Segoe UI', 'Trebuchet MS', 'Gill Sans', sans-serif;
+  color: var(--text-primary);
+  background: radial-gradient(circle at top, rgba(255,255,255,0.9), transparent 42%),
+              linear-gradient(135deg, var(--bg-top) 0%, var(--bg-mid) 45%, var(--bg-bottom) 100%);
+  text-align: center;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+}
+
+.app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 0 5.5rem;
+  min-height: 100vh;
+}
+
+/* ---------------- Header ---------------- */
+.app-header {
+  background: var(--accent-gradient);
+  color: #fff;
+  padding: 1.1rem 1.25rem 1.4rem;
+  border-radius: 0 0 24px 24px;
+  box-shadow: 0 8px 24px rgba(43, 116, 65, 0.25);
+}
+
+.app-header h1 {
+  margin: 0 0 0.2rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.app-header p {
+  margin: 0;
+  font-size: 0.88rem;
+  opacity: 0.9;
+}
+
+.stats-row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.pill {
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+/* ---------------- Cards ---------------- */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 1.15rem;
+  margin: 1rem 0.9rem 0;
+  text-align: left;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  gap: 0.6rem;
+}
+
+.card-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+
+.card-sub {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.btn {
+  border-radius: var(--button-radius);
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #fff;
+  background: var(--accent-gradient);
+  box-shadow: var(--button-shadow);
+  transition: transform 0.18s var(--ease-standard), box-shadow 0.18s var(--ease-standard);
+}
+
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: scale(0.97); }
+.btn.secondary {
+  background: var(--surface-mute);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+/* ---------------- Tree stage stack (two-layer background crossfade) ---------------- */
+.tree-stage-wrap {
+  position: relative;
+  width: 240px;
+  height: 320px;
+  margin: 0.25rem auto 0.75rem;
+  border-radius: 18px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.tree-bg-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 0.9s var(--ease-standard);
+  z-index: 0;
+}
+
+/* The "front" layer starts visible; JS toggles .is-front between the two
+   stacked layers to achieve a true opacity crossfade — background-image
+   itself cannot be transitioned directly in any browser. */
+.tree-bg-layer.is-front { opacity: 1; }
+
+.tree-stage-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.1), transparent 55%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tree-stage-img {
+  position: absolute;
+  inset: 12%;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.94) translateY(8px);
+  transition: opacity 0.6s var(--ease-standard), transform 0.6s var(--ease-standard);
+}
+
+.tree-stage-img.active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.tree-stage-img svg { width: 100%; height: 100%; }
+
+/* Stage-transition "level up" burst */
+.stage-burst {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.9), rgba(255,255,255,0) 70%);
+  opacity: 0;
+  transform: scale(0.3);
+}
+
+.stage-burst.playing {
+  animation: stageBurst 0.9s var(--ease-standard);
+}
+
+@keyframes stageBurst {
+  0%   { opacity: 0;   transform: scale(0.3); }
+  35%  { opacity: 0.85; transform: scale(1.05); }
+  100% { opacity: 0;   transform: scale(1.5); }
+}
+
+.tree-stage-wrap.leveling-up {
+  animation: treeLevelBounce 0.7s var(--ease-spring);
+}
+
+@keyframes treeLevelBounce {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.stage-name {
+  text-align: center;
+  font-weight: 700;
+  color: var(--accent-strong);
+  margin: 0.1rem 0 0.4rem;
+}
+
+/* Particle layer sits above the tree for droplets / sparkles / leaves */
+.particle-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform, opacity;
+}
+
+.particle.p-water   { background: var(--c-water); width: 8px; height: 10px; border-radius: 50% 50% 50% 0; }
+.particle.p-sparkle  { background: var(--c-fertilize); width: 6px; height: 6px; }
+.particle.p-shield   { background: transparent; border: 3px solid var(--c-protect); width: 100%; height: 100%; border-radius: 50%; left:0; top:0; }
+.particle.p-leaf     { background: var(--c-giveup); width: 9px; height: 6px; border-radius: 60% 0 60% 0; }
+.particle.p-impact   { background: var(--c-fight); width: 100%; height: 100%; border-radius: 12px; left: 0; top: 0; }
+
+/* ---------------- Progress bar ---------------- */
+.progress-track {
+  height: 12px;
+  background: var(--surface-mute);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent-gradient);
+  width: 0%;
+  transition: width 0.5s var(--ease-standard);
+}
+
+.progress-text {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.progress-track.growth-success { animation: growShake 0.6s var(--ease-standard); }
+.progress-track.growth-fail    { animation: growWilt 0.6s var(--ease-standard); }
+
+@keyframes growShake {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.03); }
+  60% { transform: scale(0.98); }
+}
+@keyframes growWilt {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(2px); opacity: 0.7; }
+}
+
+/* ---------------- Action buttons (Daily Tasks + Challenge Actions) ---------------- */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
+  margin-top: 0.25rem;
+}
+
+.action-btn {
+  position: relative;
+  overflow: hidden;
+  background: var(--action-soft, var(--surface-mute));
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.5rem;
+  min-height: 78px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  transition: transform 0.18s var(--ease-standard), box-shadow 0.18s var(--ease-standard);
+}
+
+.action-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
+.action-btn.pressed { transform: scale(0.95); }
+
+.action-btn .icon { font-size: 1.3rem; }
+.action-btn .name { font-weight: 800; font-size: 0.86rem; }
+.action-btn .meta {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  line-height: 1.25;
+  /* always visible — fixes the original hover-only cost/effect text
+     which never worked on touch devices */
+}
+
+.action-btn[data-action="water"]     { --action-soft: var(--c-water-soft); }
+.action-btn[data-action="protect"]   { --action-soft: var(--c-protect-soft); }
+.action-btn[data-action="fertilize"] { --action-soft: var(--c-fertilize-soft); }
+.action-btn[data-action="fight"]     { --action-soft: var(--c-fight-soft); }
+.action-btn[data-action="endure"]    { --action-soft: var(--c-endure-soft); }
+.action-btn[data-action="giveup"]    { --action-soft: var(--c-giveup-soft); }
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ---------------- Result popup (per-action accent, not generic) ---------------- */
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 25, 12, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.22s ease, visibility 0.22s ease;
+  z-index: var(--z-modal);
+  padding: 1rem;
+}
+
+.result-overlay.visible { opacity: 1; visibility: visible; }
+
+.result-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 1.3rem 1.1rem;
+  width: min(92%, 340px);
+  box-shadow: 0 24px 50px rgba(6,32,12,0.22);
+  transform: translateY(14px);
+  transition: transform 0.22s ease;
+  border-top: 5px solid var(--result-accent, var(--accent));
+}
+
+.result-overlay.visible .result-card { transform: translateY(0); }
+
+.result-icon { font-size: 1.8rem; }
+.result-title { font-weight: 800; margin: 0.3rem 0 0.15rem; }
+.result-detail { color: var(--text-secondary); font-size: 0.92rem; margin: 0 0 1rem; }
+
+/* ---------------- Modals (fixed, single stacking layer) ---------------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  padding: 1rem;
+}
+
+.modal[hidden] { display: none; }
+
+.modal-content {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 1.4rem 1.2rem;
+  width: min(92%, 420px);
+  text-align: left;
+  box-shadow: 0 18px 50px rgba(18,35,25,0.18);
+}
+
+.modal-content h2 { margin-top: 0; }
+
+/* ---------------- Toasts ---------------- */
+.toast-stack {
+  position: fixed;
+  top: 0.9rem;
+  right: 0.9rem;
+  left: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: var(--z-toast);
+  pointer-events: none;
+}
+
+.toast {
+  background: #fff;
+  border-left: 4px solid var(--accent-strong);
+  border-radius: 12px;
+  padding: 0.65rem 0.8rem;
+  box-shadow: 0 10px 26px rgba(14,35,19,0.16);
+  font-size: 0.85rem;
+  text-align: left;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  max-width: 360px;
+  margin-left: auto;
+}
+
+.toast.visible { opacity: 1; transform: translateY(0); }
+.toast.warning { border-left-color: var(--warning); }
+.toast.error   { border-left-color: var(--danger); }
+
+/* ---------------- Faith activities ---------------- */
+.faith-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.faith-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--accent-soft);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+  font-size: 0.88rem;
+}
+
+.faith-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------------- Daily login grid ---------------- */
+.login-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+}
+
+.login-day {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: var(--surface-mute);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.login-day.claimed { background: var(--accent); color: #fff; }
+.login-day.claimable { background: var(--accent-soft); color: var(--accent-strong); border: 2px solid var(--accent); }
+
+/* ---------------- Bottom test tools ---------------- */
+.test-tools {
+  margin: 1rem 0.9rem 0;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.test-tools .btn { flex: 1; font-size: 0.78rem; padding: 0.55rem; }
+
+/* ---------------- Celebration canvas (first fruit / old tree) ---------------- */
+#celebrationCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-celebration);
+  pointer-events: none;
+}
+
+/* ---------------- Motion sensitivity ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---------------- Responsive (standardized to 2 breakpoints) ---------------- */
+@media (max-width: 480px) {
+  .action-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+  .action-btn { min-height: 72px; padding: 0.55rem 0.35rem; }
+  .tree-stage-wrap { width: 210px; height: 280px; }
+}
