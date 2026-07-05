@@ -31,13 +31,88 @@ const CONFIG = {
   // Chance a Challenge event interrupts after finishing a Daily Task —
   // deliberately not every time, per the requested flow.
   challengeChance: 0.35,
-  challengeFlavors: [
-    'A sudden dry spell threatens your tree. How do you respond?',
-    'Pests are nibbling at the young leaves!',
-    'A storm is rolling in fast.',
-    'Something is testing your tree\'s roots.',
-    'A stray animal is trampling nearby — act fast!'
+
+  // Each "challenge" is framed as a real-life struggle, tied back to how a
+  // tree would face the same thing, paired with a short KJV verse (public
+  // domain, quoted in full) rather than a generic "a storm is coming" line.
+  challenges: [
+    {
+      key: 'anxiety',
+      title: '🌪️ Anxious Winds',
+      flavor: "The wind howls and your branches shake. Anxiety can rattle you the same way — but a tree with deep roots doesn't have to fear the storm.",
+      verseText: 'Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God.',
+      verseRef: 'Philippians 4:6 (KJV)'
+    },
+    {
+      key: 'doubt',
+      title: '🌫️ A Season of Doubt',
+      flavor: "Fog rolls in and you can't see the sky. Even when you can't see growth happening, roots are still working underground.",
+      verseText: 'Fear thou not; for I am with thee: be not dismayed; for I am thy God: I will strengthen thee; yea, I will help thee.',
+      verseRef: 'Isaiah 41:10 (KJV)'
+    },
+    {
+      key: 'loneliness',
+      title: '🍂 Standing Alone',
+      flavor: 'The field feels empty around you. But even a lone tree is never truly alone — held by the same ground and the same sky as every other.',
+      verseText: 'The LORD, he it is that doth go with thee; he will not fail thee, nor forsake thee.',
+      verseRef: 'Deuteronomy 31:6 (KJV)'
+    },
+    {
+      key: 'anger',
+      title: '🔥 A Scorching Heat',
+      flavor: 'The heat presses in and everything feels like it could catch fire. A tree with deep roots can weather a drought season without breaking.',
+      verseText: 'Be ye angry, and sin not: let not the sun go down upon your wrath.',
+      verseRef: 'Ephesians 4:26 (KJV)'
+    },
+    {
+      key: 'temptation',
+      title: '🐛 Pests at the Roots',
+      flavor: "Something small is gnawing at your roots, trying to weaken you from below. Every tree faces this — the question is whether it's caught early.",
+      verseText: 'God is faithful, who will not suffer you to be tempted above that ye are able; but will with the temptation also make a way to escape.',
+      verseRef: '1 Corinthians 10:13 (KJV)'
+    },
+    {
+      key: 'comparison',
+      title: '🌳 Overshadowed',
+      flavor: 'A bigger tree blocks your light. But every tree grows at its own pace, toward its own shape — comparing rings only slows your own growth.',
+      verseText: 'Let every man prove his own work, and then shall he have rejoicing in himself alone, and not in another.',
+      verseRef: 'Galatians 6:4 (KJV)'
+    },
+    {
+      key: 'grief',
+      title: '🥀 A Broken Branch',
+      flavor: 'Something in you feels broken today. Even a wounded tree can heal around the break and keep growing.',
+      verseText: 'The LORD is nigh unto them that are of a broken heart; and saveth such as be of a contrite spirit.',
+      verseRef: 'Psalm 34:18 (KJV)'
+    },
+    {
+      key: 'fear',
+      title: '⛈️ The Storm Approaches',
+      flavor: 'A storm is rolling in fast and every instinct says to brace for the worst. Fear will always come knocking — it doesn\'t have to move in.',
+      verseText: 'God hath not given us the spirit of fear; but of power, and of love, and of a sound mind.',
+      verseRef: '2 Timothy 1:7 (KJV)'
+    }
   ],
+
+  // A rotating verse shown on Home, independent of the Challenge events —
+  // picked deterministically by date so it's the same verse all day.
+  verseOfDayPool: [
+    { text: 'And he shall be like a tree planted by the rivers of water, that bringeth forth his fruit in his season; his leaf also shall not wither.', ref: 'Psalm 1:3 (KJV)' },
+    { text: 'For he shall be as a tree planted by the waters, and that spreadeth out her roots by the river, and shall not see when heat cometh, but her leaf shall be green.', ref: 'Jeremiah 17:7-8 (KJV)' },
+    { text: 'Even so every good tree bringeth forth good fruit; but a corrupt tree bringeth forth evil fruit.', ref: 'Matthew 7:17 (KJV)' },
+    { text: 'Trust in the LORD with all thine heart; and lean not unto thine own understanding.', ref: 'Proverbs 3:5 (KJV)' },
+    { text: 'I can do all things through Christ which strengtheneth me.', ref: 'Philippians 4:13 (KJV)' }
+  ],
+
+  // Seed types — "Choose Your Seed": five spiritual-fruit themes, each
+  // with its own verse and color identity, matching the original design.
+  seedTypes: {
+    faith: { label: 'Faith', icon: '✝️', pill: '#f16a5e', soft: '#fdeceb', canopyHi: '#ffcfc9', canopyMid: '#f16a5e', canopyLo: '#7a2b23', canopySideLo: '#6b241d', fruitColor: '#f16a5e', verseRef: 'Matthew 17:20', verseText: 'Even small faith moves mountains' },
+    love:  { label: 'Love',  icon: '❤️', pill: '#ef4f8b', soft: '#fdeaf1', canopyHi: '#ffd3e6', canopyMid: '#ef4f8b', canopyLo: '#7d1d43', canopySideLo: '#6e1a3b', fruitColor: '#ef4f8b', verseRef: '1 Corinthians 13:13', verseText: 'Greatest seed of all virtues' },
+    hope:  { label: 'Hope',  icon: '🌈', pill: '#2bbfa0', soft: '#e6f9f5', canopyHi: '#b9f3e6', canopyMid: '#2bbfa0', canopyLo: '#124a3e', canopySideLo: '#0f3f35', fruitColor: '#2bbfa0', verseRef: 'Romans 5:5', verseText: 'Hope does not disappoint' },
+    peace: { label: 'Peace', icon: '☮️', pill: '#7fd8ae', soft: '#eafaf1', canopyHi: '#d8f8e8', canopyMid: '#7fd8ae', canopyLo: '#396f52', canopySideLo: '#316148', fruitColor: '#7fd8ae', verseRef: 'James 3:18', verseText: 'Peace sown yields righteousness' },
+    joy:   { label: 'Joy',   icon: '😊', pill: '#f6d24e', soft: '#fffaea', canopyHi: '#fff2c2', canopyMid: '#f6d24e', canopyLo: '#7d5f10', canopySideLo: '#6e530e', fruitColor: '#f6d24e', verseRef: 'Galatians 5:22', verseText: 'Joy is fruit of the Spirit' }
+  },
 
   dailyLoginRewards: [5, 5, 10, 10, 15, 15, 30],
   dailyLoginCompletionBonus: 25
@@ -57,6 +132,7 @@ function defaultState() {
     pointsForFruit: 0,
     hasCelebratedFirstFruit: false,
     previousStage: 'seed',
+    seedType: 'faith',
     faithCompletions: {},   // key: `${faith}:${periodKey}` -> true
     dailyLogin: { claimedDays: [], streakDay: 1, lastClaimDate: '' }
   };
@@ -190,6 +266,11 @@ function render(options = {}) {
 
   const completedDays = state.dailyLogin.claimedDays.length;
   streakValueEl.textContent = completedDays > 0 ? completedDays : 1;
+
+  // Mirror the same stats into the Profile tab
+  el('profileFp').textContent = Math.floor(state.faithPoints);
+  el('profileStreak').textContent = completedDays > 0 ? completedDays : 1;
+  el('profileFruit').textContent = state.fruitCount;
 
   renderStage();
   renderFruits();
@@ -378,6 +459,22 @@ el('resultCloseBtn').addEventListener('click', () => {
   }
 });
 
+/* ---------------- Tabs / bottom nav ---------------- */
+document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.hidden = panel.dataset.tab !== tab;
+  });
+  document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  if (tab === 'ranking') renderRanking();
+  if (tab === 'profile') renderSeedTypeGrid();
+}
+
 /* ---------------- Toasts ---------------- */
 function showToast(message, type = 'info') {
   const stack = el('toastStack');
@@ -411,8 +508,11 @@ el('closeDailyTasksBtn').addEventListener('click', () => { el('dailyTasksModal')
 
 function openChallenge() {
   el('dailyTasksModal').hidden = true;
-  el('challengeFlavorText').textContent =
-    CONFIG.challengeFlavors[Math.floor(Math.random() * CONFIG.challengeFlavors.length)];
+  const challenge = CONFIG.challenges[Math.floor(Math.random() * CONFIG.challenges.length)];
+  el('challengeTitle').textContent = challenge.title;
+  el('challengeFlavorText').textContent = challenge.flavor;
+  el('challengeVerseText').textContent = challenge.verseText;
+  el('challengeVerseRef').textContent = challenge.verseRef;
   el('challengeModal').hidden = false;
 }
 
@@ -491,7 +591,7 @@ el('upgradeRootsBtn').addEventListener('click', () => {
   render();
 });
 
-/* ---------------- Faith activities ---------------- */
+/* ---------------- Faith activities (now require a photo upload) ---------------- */
 function renderFaithButtons() {
   document.querySelectorAll('.faith-btn').forEach(btn => {
     const faith = btn.dataset.faith;
@@ -503,11 +603,13 @@ function renderFaithButtons() {
   });
 }
 
+let pendingFaithBtn = null;
+let pendingPhotoDataUrl = null;
+
 document.querySelectorAll('.faith-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const faith = btn.dataset.faith;
     const unit = btn.dataset.period;
-    const fp = Number(btn.dataset.fp);
     const key = `${faith}:${periodKeyFor(unit)}`;
 
     if (state.faithCompletions[key]) {
@@ -515,11 +617,78 @@ document.querySelectorAll('.faith-btn').forEach(btn => {
       return;
     }
 
-    state.faithCompletions[key] = true;
-    state.faithPoints += fp;
-    showToast(`+${fp} FP earned. Thank you for showing up today.`, 'success');
-    render();
+    pendingFaithBtn = btn;
+    pendingPhotoDataUrl = null;
+    el('photoUploadTitle').textContent = `Upload Proof — ${btn.textContent.trim().split('+')[0].trim()}`;
+    el('photoPreview').innerHTML = '<span id="photoPreviewPlaceholder">No photo selected yet</span>';
+    el('confirmPhotoUploadBtn').disabled = true;
+    el('photoUploadModal').hidden = false;
   });
+});
+
+el('choosePhotoBtn').addEventListener('click', () => el('photoFileInput').click());
+
+el('photoFileInput').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => setPendingPhoto(reader.result);
+  reader.readAsDataURL(file);
+});
+
+el('useSamplePhotoBtn').addEventListener('click', () => {
+  // Draws a small placeholder image so the upload flow can be tested
+  // without needing a real camera/file on the test device.
+  const canvas = document.createElement('canvas');
+  canvas.width = 240; canvas.height = 180;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 240, 180);
+  grad.addColorStop(0, '#bdf7a0');
+  grad.addColorStop(1, '#3a9e4f');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 240, 180);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.font = '16px sans-serif';
+  ctx.fillText('Sample Photo', 60, 95);
+  setPendingPhoto(canvas.toDataURL());
+});
+
+function setPendingPhoto(dataUrl) {
+  pendingPhotoDataUrl = dataUrl;
+  el('photoPreview').innerHTML = `<img src="${dataUrl}" alt="Uploaded proof preview" />`;
+  el('confirmPhotoUploadBtn').disabled = false;
+}
+
+el('cancelPhotoUploadBtn').addEventListener('click', () => {
+  el('photoUploadModal').hidden = true;
+  pendingFaithBtn = null;
+  pendingPhotoDataUrl = null;
+});
+
+el('confirmPhotoUploadBtn').addEventListener('click', () => {
+  if (!pendingFaithBtn || !pendingPhotoDataUrl) return;
+  const btn = pendingFaithBtn;
+  const faith = btn.dataset.faith;
+  const unit = btn.dataset.period;
+  const fp = Number(btn.dataset.fp);
+  const growth = Number(btn.dataset.growth || 0);
+  const key = `${faith}:${periodKeyFor(unit)}`;
+
+  state.faithCompletions[key] = true;
+  state.faithPoints += fp;
+  if (growth > 0) applyGrowth(growth);
+
+  el('photoUploadModal').hidden = true;
+  pendingFaithBtn = null;
+  pendingPhotoDataUrl = null;
+
+  showToast(
+    growth > 0
+      ? `+${fp} FP and +${growth} growth — thank you for sharing your faith today.`
+      : `+${fp} FP earned. Thank you for showing up today.`,
+    'success'
+  );
+  render();
 });
 
 /* ---------------- Daily login ---------------- */
@@ -570,6 +739,70 @@ el('claimTodayBtn').addEventListener('click', () => {
   );
   render();
 });
+
+/* ---------------- Verse of the Day ---------------- */
+function renderVerseOfDay() {
+  const pool = CONFIG.verseOfDayPool;
+  // Deterministic by date, so it's the same verse all day and changes daily.
+  const dayNumber = Math.floor(Date.now() / 86400000);
+  const verse = pool[dayNumber % pool.length];
+  el('verseText').textContent = `"${verse.text}"`;
+  el('verseRef').textContent = verse.ref;
+}
+
+/* ---------------- Choose Your Seed (Faith/Love/Hope/Peace/Joy) ---------------- */
+function applySeedTypePalette() {
+  const type = CONFIG.seedTypes[state.seedType] || CONFIG.seedTypes.faith;
+  treeStageWrap.style.setProperty('--canopy-hi', type.canopyHi);
+  treeStageWrap.style.setProperty('--canopy-mid', type.canopyMid);
+  treeStageWrap.style.setProperty('--canopy-lo', type.canopyLo);
+  treeStageWrap.style.setProperty('--canopy-side-lo', type.canopySideLo);
+  treeStageWrap.style.setProperty('--fruit-color', type.fruitColor);
+}
+
+function renderSeedTypeGrid() {
+  const grid = el('treeTypeGrid');
+  grid.innerHTML = Object.entries(CONFIG.seedTypes).map(([key, t]) => `
+    <button class="seed-type-card ${state.seedType === key ? 'selected' : ''}" data-seed-type="${key}"
+            style="--seed-pill:${t.pill}; --seed-soft:${t.soft};">
+      <span class="seed-pill">${t.icon} ${t.label}</span>
+      <span class="seed-verse-ref">${t.verseRef}</span>
+      <span class="seed-verse-text">${t.verseText}</span>
+    </button>
+  `).join('');
+
+  grid.querySelectorAll('.seed-type-card').forEach(card => {
+    card.addEventListener('click', () => {
+      state.seedType = card.dataset.seedType;
+      applySeedTypePalette();
+      renderSeedTypeGrid();
+      showToast(`Your seed is now planted in ${CONFIG.seedTypes[state.seedType].label}.`, 'success');
+      saveState();
+    });
+  });
+}
+
+/* ---------------- Ranking (sample local leaderboard) ---------------- */
+const MOCK_RANKING_NAMES = ['Grace M.', 'Daniel T.', 'Hannah R.', 'Samuel B.', 'Naomi C.'];
+
+function renderRanking() {
+  // Regenerated each time the tab opens — sample data only, not persisted,
+  // just enough to show what a leaderboard layout would look like.
+  const mockScores = MOCK_RANKING_NAMES.map(name => ({
+    name,
+    fp: Math.floor(Math.random() * 600) + 50
+  }));
+  mockScores.push({ name: 'You', fp: Math.floor(state.faithPoints), isYou: true });
+  mockScores.sort((a, b) => b.fp - a.fp);
+
+  el('rankingList').innerHTML = mockScores.map((row, i) => `
+    <div class="ranking-row ${row.isYou ? 'is-you' : ''}">
+      <span class="ranking-rank">#${i + 1}</span>
+      <span class="ranking-name">${row.name}</span>
+      <span class="ranking-fp">${row.fp} FP</span>
+    </div>
+  `).join('');
+}
 
 /* ---------------- Test tools ---------------- */
 el('addTestFpBtn').addEventListener('click', () => {
@@ -638,6 +871,9 @@ function celebrateFirstFruit() {
 }
 
 /* ---------------- Init ---------------- */
+applySeedTypePalette();
+renderVerseOfDay();
+renderSeedTypeGrid();
 render({ persist: false });
 
 // Surface the daily reward automatically on load if it hasn't been

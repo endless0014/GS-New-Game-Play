@@ -22,6 +22,8 @@
     </div>
   </header>
 
+  <div class="tab-panel" data-tab="home">
+
   <!-- Daily Reward -->
   <section class="card">
     <div class="card-head">
@@ -187,14 +189,14 @@
                 <stop offset="100%" stop-color="#654a30"/>
               </linearGradient>
               <radialGradient id="youngCanopyGrad" cx="38%" cy="30%" r="75%">
-                <stop offset="0%" stop-color="#bdf7a0"/>
-                <stop offset="45%" stop-color="#7fe169"/>
-                <stop offset="100%" stop-color="#215e2e"/>
+                <stop offset="0%" style="stop-color:var(--canopy-hi, #bdf7a0)"/>
+                <stop offset="45%" style="stop-color:var(--canopy-mid, #7fe169)"/>
+                <stop offset="100%" style="stop-color:var(--canopy-lo, #215e2e)"/>
               </radialGradient>
               <radialGradient id="youngCanopySideGrad" cx="38%" cy="30%" r="75%">
-                <stop offset="0%" stop-color="#a8ed8c"/>
-                <stop offset="55%" stop-color="#3f9a4b"/>
-                <stop offset="100%" stop-color="#1e5527"/>
+                <stop offset="0%" style="stop-color:var(--canopy-hi, #a8ed8c)"/>
+                <stop offset="55%" style="stop-color:var(--canopy-mid, #3f9a4b)"/>
+                <stop offset="100%" style="stop-color:var(--canopy-side-lo, #1e5527)"/>
               </radialGradient>
               <radialGradient id="youngShadowGrad" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stop-color="rgba(45,32,18,0.32)"/>
@@ -220,14 +222,14 @@
                 <stop offset="100%" stop-color="#5a4128"/>
               </linearGradient>
               <radialGradient id="matureCanopyGrad" cx="37%" cy="28%" r="75%">
-                <stop offset="0%" stop-color="#c3fca7"/>
-                <stop offset="45%" stop-color="#8bea76"/>
-                <stop offset="100%" stop-color="#1c5730"/>
+                <stop offset="0%" style="stop-color:var(--canopy-hi, #c3fca7)"/>
+                <stop offset="45%" style="stop-color:var(--canopy-mid, #8bea76)"/>
+                <stop offset="100%" style="stop-color:var(--canopy-lo, #1c5730)"/>
               </radialGradient>
               <radialGradient id="matureCanopySideGrad" cx="37%" cy="28%" r="75%">
-                <stop offset="0%" stop-color="#a8ed8c"/>
-                <stop offset="55%" stop-color="#3b9049"/>
-                <stop offset="100%" stop-color="#194a24"/>
+                <stop offset="0%" style="stop-color:var(--canopy-hi, #a8ed8c)"/>
+                <stop offset="55%" style="stop-color:var(--canopy-mid, #3b9049)"/>
+                <stop offset="100%" style="stop-color:var(--canopy-side-lo, #194a24)"/>
               </radialGradient>
               <radialGradient id="matureShadowGrad" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stop-color="rgba(42,30,17,0.34)"/>
@@ -253,14 +255,14 @@
                 <stop offset="100%" stop-color="#503a24"/>
               </linearGradient>
               <radialGradient id="oldCanopyGrad" cx="36%" cy="26%" r="75%">
-                <stop offset="0%" stop-color="#cbffae"/>
-                <stop offset="42%" stop-color="#9bf383"/>
-                <stop offset="100%" stop-color="#164a26"/>
+                <stop offset="0%" style="stop-color:var(--canopy-hi, #cbffae)"/>
+                <stop offset="42%" style="stop-color:var(--canopy-mid, #9bf383)"/>
+                <stop offset="100%" style="stop-color:var(--canopy-lo, #164a26)"/>
               </radialGradient>
               <radialGradient id="oldCanopySideGrad" cx="36%" cy="26%" r="75%">
-                <stop offset="0%" stop-color="#a8ed8c"/>
-                <stop offset="55%" stop-color="#2f7f44"/>
-                <stop offset="100%" stop-color="#123d1f"/>
+                <stop offset="0%" style="stop-color:var(--canopy-hi, #a8ed8c)"/>
+                <stop offset="55%" style="stop-color:var(--canopy-mid, #2f7f44)"/>
+                <stop offset="100%" style="stop-color:var(--canopy-side-lo, #123d1f)"/>
               </radialGradient>
               <radialGradient id="oldShadowGrad" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stop-color="rgba(40,28,16,0.36)"/>
@@ -274,16 +276,16 @@
             <circle cx="60" cy="44" r="28" fill="url(#oldCanopyGrad)"/>
             <ellipse cx="49" cy="32" rx="6.5" ry="4.4" fill="#ecffdc" opacity="0.5"/>
             <g id="oldTreeFruits">
-              <circle cx="49" cy="50" r="3.4" fill="#ff7043" opacity="0"/>
-              <circle cx="67" cy="48" r="3.4" fill="#ff7043" opacity="0"/>
-              <circle cx="77" cy="58" r="3.2" fill="#ff7043" opacity="0"/>
-              <circle cx="41" cy="61" r="3.2" fill="#ff7043" opacity="0"/>
-              <circle cx="59" cy="63" r="3.5" fill="#ff7043" opacity="0"/>
-              <circle cx="71" cy="70" r="3.2" fill="#ff7043" opacity="0"/>
-              <circle cx="47" cy="73" r="3.2" fill="#ff7043" opacity="0"/>
-              <circle cx="61" cy="78" r="3.3" fill="#ff7043" opacity="0"/>
-              <circle cx="82" cy="67" r="3.1" fill="#ff7043" opacity="0"/>
-              <circle cx="34" cy="68" r="3.1" fill="#ff7043" opacity="0"/>
+              <circle cx="49" cy="50" r="3.4" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
+              <circle cx="67" cy="48" r="3.4" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
+              <circle cx="77" cy="58" r="3.2" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
+              <circle cx="41" cy="61" r="3.2" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
+              <circle cx="59" cy="63" r="3.5" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
+              <circle cx="71" cy="70" r="3.2" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
+              <circle cx="47" cy="73" r="3.2" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
+              <circle cx="61" cy="78" r="3.3" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
+              <circle cx="82" cy="67" r="3.1" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
+              <circle cx="34" cy="68" r="3.1" style="fill:var(--fruit-color, #ff7043)" opacity="0"/>
             </g>
           </svg>
         </div>
@@ -298,9 +300,20 @@
     <p class="tap-hint">🌿 Tap your tree to tend to it</p>
   </section>
 
+  <!-- Verse of the Day -->
+  <section class="card verse-card">
+    <div class="card-head"><h3>📖 Verse of the Day</h3></div>
+    <p class="verse-text" id="verseText">Loading…</p>
+    <p class="verse-ref" id="verseRef"></p>
+  </section>
+
+  </div><!-- /tab-home -->
+
+  <div class="tab-panel" data-tab="tasks" hidden>
+
   <!-- Faith Activities -->
   <section class="card">
-    <div class="card-head"><h3>🙏 Faith Activities</h3><span class="card-sub" style="margin:0;">Earn FP</span></div>
+    <div class="card-head"><h3>🙏 Faith Activities</h3><span class="card-sub" style="margin:0;">Upload proof to earn FP</span></div>
     <div class="faith-grid" id="faithGrid">
       <button class="faith-btn" data-faith="prayer" data-fp="2" data-period="day">🙏 Prayer Time <span>+2 FP</span></button>
       <button class="faith-btn" data-faith="bible" data-fp="2" data-period="day">📘 Bible Reading <span>+2 FP</span></button>
@@ -310,13 +323,61 @@
     </div>
   </section>
 
+  <!-- Share the Gospel -->
+  <section class="card">
+    <div class="card-head"><h3>📢 Share the Gospel</h3></div>
+    <p class="card-sub">Tell someone about your faith today — this also feeds growth straight into your tree, not just your FP balance.</p>
+    <button class="faith-btn gospel-btn" data-faith="gospel" data-fp="8" data-growth="15" data-period="day" style="width:100%;">📢 Share the Gospel <span>+8 FP · +15 growth</span></button>
+  </section>
+
+  </div><!-- /tab-tasks -->
+
+  <div class="tab-panel" data-tab="ranking" hidden>
+
+  <section class="card">
+    <div class="card-head"><h3>🏆 Leaderboard</h3></div>
+    <p class="card-sub">Sample local leaderboard — for demonstration only.</p>
+    <div id="rankingList"></div>
+  </section>
+
+  </div><!-- /tab-ranking -->
+
+  <div class="tab-panel" data-tab="profile" hidden>
+
+  <section class="card">
+    <div class="card-head"><h3>👤 Your Progress</h3></div>
+    <div class="user-stats" style="grid-template-columns:repeat(3,1fr);">
+      <div class="u-stat"><span class="n" id="profileFp">0</span><span class="l">FP</span></div>
+      <div class="u-stat"><span class="n" id="profileStreak">1</span><span class="l">Streak</span></div>
+      <div class="u-stat"><span class="n" id="profileFruit">0</span><span class="l">Fruit</span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h3>🌱 Choose Your Seed</h3></div>
+    <p class="card-sub">Pick which spiritual fruit you're growing toward. This changes your canopy, fruit color, and matches you with its verse.</p>
+    <div class="tree-type-grid" id="treeTypeGrid"></div>
+  </section>
+
   <!-- Test tools -->
   <section class="test-tools">
     <button class="btn secondary" id="addTestFpBtn">+100 FP (test)</button>
     <button class="btn secondary" id="resetProgressBtn">Reset Progress</button>
   </section>
+  <section class="test-tools">
+    <a href="admin.html" class="btn secondary" style="width:100%;text-align:center;text-decoration:none;">🛡️ View Admin Dashboard (sample)</a>
+  </section>
 
-</div>
+  </div><!-- /tab-profile -->
+
+</div><!-- /app-shell -->
+
+<nav class="bottom-nav" id="bottomNav">
+  <button class="bottom-nav-item active" data-tab="home"><span class="bn-icon">🌱</span><span>Home</span></button>
+  <button class="bottom-nav-item" data-tab="tasks"><span class="bn-icon">✅</span><span>Tasks</span></button>
+  <button class="bottom-nav-item" data-tab="ranking"><span class="bn-icon">🏆</span><span>Ranking</span></button>
+  <button class="bottom-nav-item" data-tab="profile"><span class="bn-icon">👤</span><span>Profile</span></button>
+</nav>
 
 <!-- Daily login modal -->
 <div class="modal" id="dailyLoginModal" hidden>
@@ -356,8 +417,12 @@
      is never opened directly by the player. -->
 <div class="modal" id="challengeModal" hidden>
   <div class="modal-content">
-    <h2>⚡ A Challenge Appears!</h2>
+    <h2 id="challengeTitle">⚡ A Challenge Appears!</h2>
     <p class="card-sub" id="challengeFlavorText">Something is testing your young tree. How do you respond?</p>
+    <div class="verse-callout">
+      <p class="verse-text" id="challengeVerseText"></p>
+      <p class="verse-ref" id="challengeVerseRef"></p>
+    </div>
     <div class="action-grid">
       <button class="action-btn" data-action="fight" id="fightBtn">
         <span class="icon">⚔️</span><span class="name">Fight</span>
@@ -372,6 +437,25 @@
         <span class="meta">0 FP · −60 progress</span>
       </button>
     </div>
+  </div>
+</div>
+
+<!-- Photo upload modal — shared by all Faith Activities + Share the Gospel -->
+<div class="modal" id="photoUploadModal" hidden>
+  <div class="modal-content">
+    <h2 id="photoUploadTitle">Upload Proof</h2>
+    <p class="card-sub">Attach a quick photo to confirm you did this today.</p>
+
+    <div class="photo-preview" id="photoPreview">
+      <span id="photoPreviewPlaceholder">No photo selected yet</span>
+    </div>
+
+    <input type="file" accept="image/*" capture="environment" id="photoFileInput" style="display:none;" />
+    <button class="btn secondary" id="choosePhotoBtn" style="width:100%;">📷 Choose Photo</button>
+    <button class="btn secondary" id="useSamplePhotoBtn" style="width:100%;margin-top:0.5rem;">Use Sample Photo (test)</button>
+
+    <button class="btn" id="confirmPhotoUploadBtn" style="width:100%;margin-top:0.9rem;" disabled>Claim Reward</button>
+    <button class="btn secondary" id="cancelPhotoUploadBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
   </div>
 </div>
 

@@ -1,0 +1,179 @@
+/* ============================================================
+   Admin Dashboard (Sample) — extends the shared design tokens
+   in style.css. Deliberately card-based rather than a wide table,
+   since a 12-column table cannot work on a phone-width screen.
+   ============================================================ */
+
+.admin-shell {
+  max-width: 760px;
+}
+
+.admin-header {
+  position: relative;
+  text-align: left;
+}
+
+.admin-back {
+  display: inline-block;
+  color: #fff;
+  opacity: 0.85;
+  font-size: 0.82rem;
+  text-decoration: none;
+  margin-bottom: 0.5rem;
+}
+.admin-back:hover { opacity: 1; text-decoration: underline; }
+
+/* ---------------- Stat cards ---------------- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+
+@media (min-width: 560px) {
+  .stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.stat-tile {
+  background: var(--surface-mute);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.6rem;
+  text-align: center;
+}
+
+.stat-tile .value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-strong);
+  display: block;
+}
+
+.stat-tile .label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+/* ---------------- Filters ---------------- */
+.admin-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0.9rem;
+}
+
+@media (min-width: 560px) {
+  .admin-filters { flex-direction: row; align-items: center; justify-content: space-between; }
+}
+
+.admin-search {
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.86rem;
+  font-family: inherit;
+  width: 100%;
+}
+
+.role-chips { display: flex; gap: 0.4rem; }
+
+.chip {
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--surface-mute);
+  color: var(--text-secondary);
+}
+
+.chip.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ---------------- User list (cards, not a wide table) ---------------- */
+.user-list {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .user-list { grid-template-columns: repeat(2, 1fr); }
+}
+
+.user-card {
+  background: var(--surface-mute);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.user-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.user-name {
+  font-weight: 800;
+  font-size: 0.94rem;
+  color: var(--text-primary);
+}
+
+.user-email {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.role-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.role-badge.player { background: var(--accent-soft); color: var(--accent-strong); }
+.role-badge.admin  { background: #fdecd8; color: #a5590a; }
+
+.user-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  text-align: center;
+}
+
+.user-stats .u-stat { background: var(--surface); border-radius: 8px; padding: 0.35rem 0.2rem; }
+.user-stats .u-stat .n { font-weight: 800; font-size: 0.86rem; color: var(--text-primary); display: block; }
+.user-stats .u-stat .l { font-size: 0.62rem; color: var(--text-muted); }
+
+.user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.user-actions button {
+  flex: 1;
+  min-width: 84px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.4rem 0.5rem;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.user-actions button:hover { background: var(--accent-soft); }
+.user-actions button.danger-action { color: var(--danger); }
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  padding: 1.5rem 0;
+}

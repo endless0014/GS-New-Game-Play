@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Growing Seed — Admin Dashboard (Sample)</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+<div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+<div class="app-shell admin-shell">
+
+  <header class="app-header admin-header">
+    <a href="index.html" class="admin-back">← Back to game</a>
+    <h1>🛡️ Admin Dashboard</h1>
+    <p>Sample / demo only — this data is local mock data, not connected to real players.</p>
+  </header>
+
+  <section class="card">
+    <div class="stat-grid" id="statGrid"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h3>Players</h3>
+      <button class="btn secondary" id="addTestUserBtn">+ Add Demo Player</button>
+    </div>
+
+    <div class="admin-filters">
+      <input type="text" id="searchInput" placeholder="Search name or email…" class="admin-search" />
+      <div class="role-chips" id="roleChips">
+        <button class="chip active" data-role="all">All</button>
+        <button class="chip" data-role="player">Players</button>
+        <button class="chip" data-role="admin">Admins</button>
+      </div>
+    </div>
+
+    <div class="user-list" id="userList"></div>
+    <p class="empty-state" id="emptyState" hidden>No players match your search.</p>
+  </section>
+
+  <section class="test-tools">
+    <button class="btn secondary" id="resetAllBtn">Reset Demo Data</button>
+  </section>
+
+</div>
+
+<!-- Confirm modal for destructive actions -->
+<div class="modal" id="confirmModal" hidden>
+  <div class="modal-content">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p id="confirmBody" class="card-sub"></p>
+    <button class="btn" id="confirmYesBtn" style="width:100%;background:var(--danger);box-shadow:none;">Confirm</button>
+    <button class="btn secondary" id="confirmNoBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>

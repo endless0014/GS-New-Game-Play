@@ -54,6 +54,29 @@ The Seed stage specifically got a pass to look and feel three-dimensional:
 
 This same layered-shading + idle-motion approach can be extended to the other six stages if you'd like the whole tree to feel more dimensional, not just the seed.
 
+## Major addition: bottom nav, real content, and a values-driven Challenge system
+
+- **Bottom navigation** (Home / Tasks / Ranking / Profile) — the game is now organized into tabs instead of one long scroll.
+- **Faith Activities now require a photo upload** before claiming FP — tap an activity, attach a photo (or use "Use Sample Photo (test)" for fast testing without a real file), then claim. The Claim button stays disabled until a photo is attached.
+- **Share the Gospel** is back, in its own card on the Tasks tab — it grants both FP *and* direct tree growth in one action (matching the original app's dual-effect behavior), and goes through the same photo-upload flow as the other activities.
+- **Choose Your Seed** (Profile tab) — matches the original design: five spiritual-fruit themes (Faith, Love, Hope, Peace, Joy), each with its own color, icon, and verse (Matthew 17:20, 1 Corinthians 13:13, Romans 5:5, James 3:18, Galatians 5:22). Selecting one retints the canopy and fruit color live via CSS custom properties across Young/Mature/Old Tree stages.
+- **Challenges are now real-life struggles, not generic events.** Instead of "a storm is coming," each Challenge is framed as something people actually face — anxiety, doubt, loneliness, anger, temptation, comparison, grief, fear — each paired with a one-line tree metaphor and a real Bible verse (KJV, public domain, quoted in full). Example: *"The wind howls and your branches shake. Anxiety can rattle you the same way — but a tree with deep roots doesn't have to fear the storm"* → Philippians 4:6. The underlying Fight/Endure/Give Up mechanics are unchanged — only the framing shown each time is new.
+- **Verse of the Day** card on Home — rotates daily (deterministic by date, so it's stable all day) through a small pool of tree-themed verses (Psalm 1:3, Jeremiah 17:7-8, Matthew 7:17, and others).
+- **Sample Leaderboard** (Ranking tab) — mock local data plus your real current FP, sorted together, to preview the layout.
+
+All of this was tested end-to-end in a headless browser: tab switching, the photo-upload gate (confirm button disabled until a photo is attached), Share the Gospel's dual FP+growth reward, tree species retinting the live canopy, and the challenge popup rendering its verse — zero console errors.
+
+## Admin Dashboard sample (`admin.html`)
+
+A separate page, linked from the bottom of the main game, showing what a fixed admin dashboard could look like:
+
+- **Card-based player list instead of a wide table** — this directly fixes the original 12-column table, which cannot work on a phone-width screen. Cards reflow to 2-up on wider screens, single column on mobile.
+- **A real confirm/cancel dialog for destructive actions** (Reset Player, Reset All Demo Data) — this replaces the original's broken pattern where `window.confirm()` asked the player to "type your email to confirm" but a browser confirm dialog has no text field to type into.
+- **Search + role filter chips** for finding a specific player instead of scrolling a giant table.
+- Stat tiles (Total Players, Admins, Avg FP, Avg Streak) in a responsive grid.
+
+**Important:** this page uses entirely local mock data generated in the browser (`admin.js`, its own `localStorage` key) — it is **not connected** to your real Firebase users, and none of the actions here (add FP, toggle role, reset) affect anyone's real account. It exists purely so you can test the *layout and interaction pattern* before deciding whether to rebuild your real admin dashboard this way. Wiring it to real data would mean swapping the mock `makeMockUser()`/`loadState()` functions for actual Firestore reads, and re-adding your real `isAdminUser()`/role-check gating in front of the page.
+
 ## Interaction flow (updated per your request)
 
 - Tapping the tree opens a **Tend Your Tree** popup with Water / Protect / Fertilize.
