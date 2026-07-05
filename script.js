@@ -20,13 +20,24 @@ const CONFIG = {
   upgradeRootsGrowth: 10,
 
   actions: {
-    fight:     { label: 'Fight',     icon: '⚔️', cost: 10, successRate: 0.7, reward: 35, failPenalty: 12, accent: '--c-fight' },
-    endure:    { label: 'Endure',    icon: '🛡️', cost: 5,  successRate: 1.0, reward: 15, failPenalty: 0,  accent: '--c-endure' },
-    giveup:    { label: 'Give Up',   icon: '🍂', cost: 0,  successRate: 1.0, reward: -60, failPenalty: 0, accent: '--c-giveup', isRegression: true },
-    water:     { label: 'Water',     icon: '💧', cost: 5,  successRate: 1.0, reward: 20, failPenalty: 0,  accent: '--c-water' },
-    protect:   { label: 'Protect',   icon: '🛡️', cost: 10, successRate: 1.0, reward: 30, failPenalty: 0,  accent: '--c-protect' },
-    fertilize: { label: 'Fertilize', icon: '✨', cost: 15, successRate: 1.0, reward: 48, failPenalty: 0,  accent: '--c-fertilize' }
+    fight:     { label: 'Fight',     icon: '⚔️', cost: 10, successRate: 0.7, reward: 35, failPenalty: 12, accent: '--c-fight', type: 'challenge' },
+    endure:    { label: 'Endure',    icon: '🛡️', cost: 5,  successRate: 1.0, reward: 15, failPenalty: 0,  accent: '--c-endure', type: 'challenge' },
+    giveup:    { label: 'Give Up',   icon: '🍂', cost: 0,  successRate: 1.0, reward: -60, failPenalty: 0, accent: '--c-giveup', isRegression: true, type: 'challenge' },
+    water:     { label: 'Water',     icon: '💧', cost: 5,  successRate: 1.0, reward: 20, failPenalty: 0,  accent: '--c-water', type: 'task' },
+    protect:   { label: 'Protect',   icon: '🛡️', cost: 10, successRate: 1.0, reward: 30, failPenalty: 0,  accent: '--c-protect', type: 'task' },
+    fertilize: { label: 'Fertilize', icon: '✨', cost: 15, successRate: 1.0, reward: 48, failPenalty: 0,  accent: '--c-fertilize', type: 'task' }
   },
+
+  // Chance a Challenge event interrupts after finishing a Daily Task —
+  // deliberately not every time, per the requested flow.
+  challengeChance: 0.35,
+  challengeFlavors: [
+    'A sudden dry spell threatens your tree. How do you respond?',
+    'Pests are nibbling at the young leaves!',
+    'A storm is rolling in fast.',
+    'Something is testing your tree\'s roots.',
+    'A stray animal is trampling nearby — act fast!'
+  ],
 
   dailyLoginRewards: [5, 5, 10, 10, 15, 15, 30],
   dailyLoginCompletionBonus: 25
@@ -341,18 +352,41 @@ function spawnDroop() {
 }
 
 /* ---------------- Result popup ---------------- */
-function showResultPopup({ icon, title, detail, accentVar }) {
+function showResultPopup({ icon, title, detail, accentVar, actionType }) {
   el('resultIcon').textContent = icon;
   el('resultTitle').textContent = title;
   el('resultDetail').textContent = detail;
   el('resultCard').style.setProperty('--result-accent', `var(${accentVar})`);
+  el('resultOverlay').dataset.actionType = actionType;
   el('resultOverlay').classList.add('visible');
 }
-el('resultCloseBtn').addEventListener('click', () => el('resultOverlay').classList.remove('visible'));
+el('resultCloseBtn').addEventListener('click', () => {
+  const actionType = el('resultOverlay').dataset.actionType;
+  el('resultOverlay').classList.remove('visible');
+
+  if (actionType === 'challenge') {
+    // Event resolved — return to the main screen.
+    el('challengeModal').hidden = true;
+    return;
+  }
+
+  if (actionType === 'task') {
+    // Randomly, not every time, a challenge interrupts the daily task flow.
+    if (Math.random() < CONFIG.challengeChance) {
+      setTimeout(() => openChallenge(), 350);
+    }
+  }
+});
 
 /* ---------------- Toasts ---------------- */
 function showToast(message, type = 'info') {
   const stack = el('toastStack');
+
+  // Cap simultaneous toasts so rapid actions can't pile up and block the UI.
+  while (stack.children.length >= 2) {
+    stack.removeChild(stack.firstElementChild);
+  }
+
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.textContent = message;
@@ -361,13 +395,31 @@ function showToast(message, type = 'info') {
   setTimeout(() => {
     t.classList.remove('visible');
     setTimeout(() => t.remove(), 250);
-  }, 2600);
+  }, 2200);
+}
+
+/* ---------------- Tree tap → Daily Tasks modal ---------------- */
+treeStageWrap.addEventListener('click', () => openDailyTasks());
+treeStageWrap.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDailyTasks(); }
+});
+
+function openDailyTasks() {
+  el('dailyTasksModal').hidden = false;
+}
+el('closeDailyTasksBtn').addEventListener('click', () => { el('dailyTasksModal').hidden = true; });
+
+function openChallenge() {
+  el('dailyTasksModal').hidden = true;
+  el('challengeFlavorText').textContent =
+    CONFIG.challengeFlavors[Math.floor(Math.random() * CONFIG.challengeFlavors.length)];
+  el('challengeModal').hidden = false;
 }
 
 /* ---------------- Challenge / Daily Task actions ---------------- */
 function runAction(key) {
   const cfg = CONFIG.actions[key];
-  const button = el(`${key}Btn`) || document.querySelector(`.action-btn[data-action="${key}"]`);
+  const button = document.querySelector(`.action-btn[data-action="${key}"]`);
 
   if (state.faithPoints < cfg.cost) {
     showToast('Not enough Faith Points for that yet.', 'warning');
@@ -407,7 +459,8 @@ function runAction(key) {
     icon: cfg.icon,
     title: cfg.label,
     detail: detailText,
-    accentVar: cfg.accent
+    accentVar: cfg.accent,
+    actionType: cfg.type
   });
 
   render();
@@ -586,3 +639,11 @@ function celebrateFirstFruit() {
 
 /* ---------------- Init ---------------- */
 render({ persist: false });
+
+// Surface the daily reward automatically on load if it hasn't been
+// claimed yet today, instead of waiting for the player to tap "Open."
+if (!hasClaimedToday()) {
+  setTimeout(() => {
+    el('dailyLoginModal').hidden = false;
+  }, 400);
+}

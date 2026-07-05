@@ -5,8 +5,8 @@ A standalone, no-setup version of the core Growing Seed gameplay loop, built for
 ## What's in scope
 
 - Seed → Old Tree progression (7 stages)
-- Daily Tasks: Water / Protect / Fertilize
-- Challenge Actions: Fight / Endure / Give Up
+- **Tap the tree to open Daily Tasks** (Water / Protect / Fertilize) — not permanent on-page buttons
+- **Challenge Actions (Fight / Endure / Give Up) appear on their own**, at random, while tending the tree — not something the player opens directly
 - Faith Activities (simplified to instant-claim buttons instead of photo upload, for fast testing)
 - Daily login streak (7-day cycle + completion bonus)
 - Upgrade Roots
@@ -29,6 +29,36 @@ A standalone, no-setup version of the core Growing Seed gameplay loop, built for
 - A one-time "level up" burst (light flash + bounce) when the tree actually advances a stage.
 - A canvas-based confetti celebration the first time fruit is earned.
 - `prefers-reduced-motion` is respected — all animations collapse to near-instant for players who've asked their OS for reduced motion.
+
+- **Daily Reward pops up automatically on load** if it hasn't been claimed yet that day — no need to tap "Open" first. Once claimed, it won't reappear again until the next day.
+
+## Every stage is now dimensional, not just the seed
+
+All seven stages (Seed → Old Tree) now share the same layered-shading approach:
+- Radial gradients with an offset light source on every canopy/leaf/sprout shape, so each reads as a lit sphere rather than a flat circle.
+- Linear gradients on every stem/trunk for a cylindrical, not flat-cutout, look.
+- A soft semi-transparent highlight on each canopy cluster.
+- A blurred, radial-gradient cast shadow (instead of a flat solid ellipse) that breathes gently in sync with the plant's motion.
+- Continuous idle motion tuned to each stage's size: Seed does a slow 3D tumble (via `rotateX`/`rotateY` + CSS `perspective`, since it's a loose object); Germination/Seedling — the smallest rooted stages — sway a little quicker; Sapling/Young Tree sway at a medium pace; Mature/Old Tree — the biggest, most established stages — sway slowest and least, the way a heavier tree would move less in the same breeze than a sapling.
+
+All of this respects `prefers-reduced-motion` like the rest of the sandbox. Verified stage-by-stage in a headless browser with zero console errors.
+
+## Seed appearance — dimensional shading, not a flat icon
+
+The Seed stage specifically got a pass to look and feel three-dimensional:
+- A radial gradient with an offset light source (upper-left) gives it real sphere-like shading instead of a flat two-tone fill.
+- A soft specular highlight (blurred via SVG `feGaussianBlur`) simulates a glossy glint.
+- A subtle rim-light stroke suggests bounced light along the opposite edge.
+- A separate cast-shadow ellipse breathes in sync with the seed's motion, reinforcing that it's sitting in space, not stuck to the background.
+- A continuous, gentle `rotateX`/`rotateY` idle tumble (via CSS 3D transforms + `perspective`) makes it feel like a solid object rather than a static sprite — all respecting `prefers-reduced-motion`.
+
+This same layered-shading + idle-motion approach can be extended to the other six stages if you'd like the whole tree to feel more dimensional, not just the seed.
+
+## Interaction flow (updated per your request)
+
+- Tapping the tree opens a **Tend Your Tree** popup with Water / Protect / Fertilize.
+- After finishing a task, there's a **35% chance** (`CONFIG.challengeChance` in `script.js`) a Challenge event pops up on its own with a random flavor line (`CONFIG.challengeFlavors`), presenting Fight / Endure / Give Up. Resolving it returns you to the main screen.
+- The player never taps into a Challenge directly — it's purely a random interruption while tending the tree, matching what you described.
 
 ## Balance — left unchanged, flagged for your decision
 

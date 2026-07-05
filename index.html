@@ -39,75 +39,254 @@
       <button class="btn secondary" id="upgradeRootsBtn">Upgrade Roots (10 FP)</button>
     </div>
 
-    <div class="tree-stage-wrap" id="treeStageWrap">
+    <div class="tree-stage-wrap" id="treeStageWrap" role="button" tabindex="0" aria-label="Open daily tasks">
       <div class="tree-bg-layer is-front" id="bgLayerA"></div>
       <div class="tree-bg-layer" id="bgLayerB"></div>
       <div class="stage-burst" id="stageBurst"></div>
 
       <!-- Tree stage SVGs -->
       <div class="tree-stage-img" data-stage="seed">
-        <svg viewBox="0 0 120 120"><defs><radialGradient id="seedBodyGrad" cx="35%" cy="35%"><stop offset="0%" stop-color="#b98d5d"/><stop offset="100%" stop-color="#7b5a3d"/></radialGradient></defs>
-        <ellipse cx="60" cy="97" rx="24" ry="7" fill="rgba(80,60,35,0.25)"/>
-        <path d="M53 88 C51 79 57 74 62 73 C69 72 73 77 72 85 C71 92 65 98 58 97 C55 96 53 93 53 88 Z" fill="url(#seedBodyGrad)"/></svg>
+        <div class="seed-3d">
+          <svg viewBox="0 0 120 120">
+            <defs>
+              <radialGradient id="seedBodyGrad" cx="34%" cy="26%" r="75%">
+                <stop offset="0%"  stop-color="#f0d5a8"/>
+                <stop offset="30%" stop-color="#d3a86a"/>
+                <stop offset="62%" stop-color="#a37847"/>
+                <stop offset="100%" stop-color="#5f4529"/>
+              </radialGradient>
+              <linearGradient id="seedRimLight" x1="1" y1="0" x2="0.3" y2="1">
+                <stop offset="0%" stop-color="#ffe9c2" stop-opacity="0.65"/>
+                <stop offset="100%" stop-color="#ffe9c2" stop-opacity="0"/>
+              </linearGradient>
+              <radialGradient id="seedShadowGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(50,35,20,0.38)"/>
+                <stop offset="100%" stop-color="rgba(50,35,20,0)"/>
+              </radialGradient>
+              <filter id="seedBlurSoft" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="2.1"/>
+              </filter>
+            </defs>
+
+            <!-- cast shadow, animated independently from the seed body -->
+            <ellipse class="seed-cast-shadow" cx="60" cy="99" rx="25" ry="7" fill="url(#seedShadowGrad)"/>
+
+            <!-- seed body: volumetric gradient gives it form -->
+            <path d="M53 88 C51 79 57 74 62 73 C69 72 73 77 72 85 C71 92 65 98 58 97 C55 96 53 93 53 88 Z"
+                  fill="url(#seedBodyGrad)"/>
+
+            <!-- rim light: soft bounce-light along the lower-right edge -->
+            <path d="M53 88 C51 79 57 74 62 73 C69 72 73 77 72 85 C71 92 65 98 58 97 C55 96 53 93 53 88 Z"
+                  fill="none" stroke="url(#seedRimLight)" stroke-width="2.4" opacity="0.8"/>
+
+            <!-- specular highlight: soft glossy glint from the light source -->
+            <ellipse class="seed-glint" cx="59" cy="80" rx="6.5" ry="4" fill="#fff7e6" opacity="0.55" filter="url(#seedBlurSoft)"/>
+          </svg>
+        </div>
       </div>
 
       <div class="tree-stage-img" data-stage="germination">
-        <svg viewBox="0 0 120 120"><defs><linearGradient id="sproutGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7ed957"/><stop offset="100%" stop-color="#2f8f3d"/></linearGradient></defs>
-        <ellipse cx="60" cy="98" rx="24" ry="7" fill="rgba(80,60,35,0.25)"/>
-        <path d="M59 91 C59 84 60 78 64 72 C67 67 70 63 72 58" stroke="#2f8f3d" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-        <ellipse cx="73" cy="58" rx="6" ry="11" fill="url(#sproutGrad)" transform="rotate(22 73 58)"/></svg>
+        <div class="stage-3d sway-quick">
+          <svg viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="sproutGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#a8ef7c"/>
+                <stop offset="55%" stop-color="#5cbf49"/>
+                <stop offset="100%" stop-color="#296b2e"/>
+              </linearGradient>
+              <linearGradient id="germStemGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#4fa63e"/>
+                <stop offset="100%" stop-color="#2b6b30"/>
+              </linearGradient>
+              <radialGradient id="germShadowGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(50,35,20,0.32)"/>
+                <stop offset="100%" stop-color="rgba(50,35,20,0)"/>
+              </radialGradient>
+            </defs>
+            <ellipse class="stage-cast-shadow" cx="60" cy="98" rx="22" ry="6.5" fill="url(#germShadowGrad)"/>
+            <path d="M59 91 C59 84 60 78 64 72 C67 67 70 63 72 58" stroke="url(#germStemGrad)" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+            <ellipse cx="73" cy="58" rx="6" ry="11" fill="url(#sproutGrad)" transform="rotate(22 73 58)"/>
+            <ellipse cx="71.5" cy="54" rx="2" ry="3.4" fill="#e7ffd2" opacity="0.55" transform="rotate(22 71.5 54)"/>
+          </svg>
+        </div>
       </div>
 
       <div class="tree-stage-img" data-stage="seedling">
-        <svg viewBox="0 0 120 120"><defs><linearGradient id="seedlingStemGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7b5e3c"/><stop offset="100%" stop-color="#5d452f"/></linearGradient></defs>
-        <ellipse cx="60" cy="106" rx="22" ry="6.8" fill="rgba(80,60,35,0.22)"/>
-        <path d="M60 98 C58 87 59 78 61 67" stroke="url(#seedlingStemGrad)" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-        <ellipse cx="53" cy="78" rx="7" ry="11" fill="#67c95a" transform="rotate(-28 53 78)"/>
-        <ellipse cx="68" cy="72" rx="7" ry="11" fill="#63c255" transform="rotate(24 68 72)"/></svg>
+        <div class="stage-3d sway-quick">
+          <svg viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="seedlingStemGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#8a6c47"/>
+                <stop offset="100%" stop-color="#5d452f"/>
+              </linearGradient>
+              <radialGradient id="seedlingLeafGradL" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stop-color="#b7f295"/>
+                <stop offset="55%" stop-color="#67c95a"/>
+                <stop offset="100%" stop-color="#2f7d38"/>
+              </radialGradient>
+              <radialGradient id="seedlingLeafGradR" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stop-color="#aef08e"/>
+                <stop offset="55%" stop-color="#63c255"/>
+                <stop offset="100%" stop-color="#2c7a35"/>
+              </radialGradient>
+              <radialGradient id="seedlingShadowGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(50,35,20,0.3)"/>
+                <stop offset="100%" stop-color="rgba(50,35,20,0)"/>
+              </radialGradient>
+            </defs>
+            <ellipse class="stage-cast-shadow" cx="60" cy="106" rx="21" ry="6.2" fill="url(#seedlingShadowGrad)"/>
+            <path d="M60 98 C58 87 59 78 61 67" stroke="url(#seedlingStemGrad)" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+            <ellipse cx="53" cy="78" rx="7" ry="11" fill="url(#seedlingLeafGradL)" transform="rotate(-28 53 78)"/>
+            <ellipse cx="68" cy="72" rx="7" ry="11" fill="url(#seedlingLeafGradR)" transform="rotate(24 68 72)"/>
+            <ellipse cx="51" cy="73" rx="2" ry="3.2" fill="#eaffe0" opacity="0.5" transform="rotate(-28 51 73)"/>
+            <ellipse cx="66.5" cy="67.5" rx="2" ry="3.2" fill="#eaffe0" opacity="0.5" transform="rotate(24 66.5 67.5)"/>
+          </svg>
+        </div>
       </div>
 
+
       <div class="tree-stage-img" data-stage="sapling">
-        <svg viewBox="0 0 120 120"><defs><linearGradient id="saplingLeafGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7cda63"/><stop offset="100%" stop-color="#2f8d45"/></linearGradient></defs>
-        <ellipse cx="60" cy="106" rx="24" ry="7" fill="rgba(80,60,35,0.22)"/>
-        <path d="M60 101 C57 86 58 72 61 57" stroke="#6f5338" stroke-width="4" fill="none" stroke-linecap="round"/>
-        <ellipse cx="73" cy="66" rx="7" ry="12" fill="url(#saplingLeafGrad)" transform="rotate(24 73 66)"/>
-        <ellipse cx="60" cy="54" rx="8" ry="13" fill="#6fcd5e"/></svg>
+        <div class="stage-3d sway-medium">
+          <svg viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="saplingTrunkGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#987850"/>
+                <stop offset="100%" stop-color="#5a4128"/>
+              </linearGradient>
+              <radialGradient id="saplingLeafGrad" cx="35%" cy="28%" r="75%">
+                <stop offset="0%" stop-color="#bdf59c"/>
+                <stop offset="55%" stop-color="#7cda63"/>
+                <stop offset="100%" stop-color="#2b7a3a"/>
+              </radialGradient>
+              <radialGradient id="saplingTopGrad" cx="35%" cy="28%" r="75%">
+                <stop offset="0%" stop-color="#c4f7a4"/>
+                <stop offset="55%" stop-color="#6fcd5e"/>
+                <stop offset="100%" stop-color="#296f34"/>
+              </radialGradient>
+              <radialGradient id="saplingShadowGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(50,35,20,0.3)"/>
+                <stop offset="100%" stop-color="rgba(50,35,20,0)"/>
+              </radialGradient>
+            </defs>
+            <ellipse class="stage-cast-shadow" cx="60" cy="106" rx="23" ry="6.6" fill="url(#saplingShadowGrad)"/>
+            <path d="M60 101 C57 86 58 72 61 57" stroke="url(#saplingTrunkGrad)" stroke-width="4.2" fill="none" stroke-linecap="round"/>
+            <ellipse cx="73" cy="66" rx="7" ry="12" fill="url(#saplingLeafGrad)" transform="rotate(24 73 66)"/>
+            <ellipse cx="60" cy="54" rx="8" ry="13" fill="url(#saplingTopGrad)"/>
+            <ellipse cx="71.5" cy="61" rx="2.1" ry="3.4" fill="#eaffe0" opacity="0.5" transform="rotate(24 71.5 61)"/>
+            <ellipse cx="57.5" cy="49" rx="2.4" ry="3.6" fill="#edffdf" opacity="0.5"/>
+          </svg>
+        </div>
       </div>
 
       <div class="tree-stage-img" data-stage="youngTree">
-        <svg viewBox="0 0 120 120"><defs><radialGradient id="youngCanopyGrad" cx="42%" cy="35%"><stop offset="0%" stop-color="#7fe169"/><stop offset="100%" stop-color="#2e7f3f"/></radialGradient></defs>
-        <ellipse cx="60" cy="113" rx="28" ry="7" fill="rgba(80,60,35,0.23)"/>
-        <path d="M56 109 C56 90 56 75 58 58 C60 55 62 55 64 58 C66 75 66 90 66 109 Z" fill="#8a6748"/>
-        <circle cx="60" cy="53" r="18" fill="url(#youngCanopyGrad)"/>
-        <circle cx="46" cy="63" r="13" fill="#3f9a4b"/><circle cx="74" cy="63" r="13" fill="#3f9a4b"/></svg>
+        <div class="stage-3d sway-medium">
+          <svg viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="youngTrunkGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#a0805a"/>
+                <stop offset="100%" stop-color="#654a30"/>
+              </linearGradient>
+              <radialGradient id="youngCanopyGrad" cx="38%" cy="30%" r="75%">
+                <stop offset="0%" stop-color="#bdf7a0"/>
+                <stop offset="45%" stop-color="#7fe169"/>
+                <stop offset="100%" stop-color="#215e2e"/>
+              </radialGradient>
+              <radialGradient id="youngCanopySideGrad" cx="38%" cy="30%" r="75%">
+                <stop offset="0%" stop-color="#a8ed8c"/>
+                <stop offset="55%" stop-color="#3f9a4b"/>
+                <stop offset="100%" stop-color="#1e5527"/>
+              </radialGradient>
+              <radialGradient id="youngShadowGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(45,32,18,0.32)"/>
+                <stop offset="100%" stop-color="rgba(45,32,18,0)"/>
+              </radialGradient>
+            </defs>
+            <ellipse class="stage-cast-shadow" cx="60" cy="113" rx="27" ry="7" fill="url(#youngShadowGrad)"/>
+            <path d="M56 109 C56 90 56 75 58 58 C60 55 62 55 64 58 C66 75 66 90 66 109 Z" fill="url(#youngTrunkGrad)"/>
+            <circle cx="46" cy="63" r="13" fill="url(#youngCanopySideGrad)"/>
+            <circle cx="74" cy="63" r="13" fill="url(#youngCanopySideGrad)"/>
+            <circle cx="60" cy="53" r="18" fill="url(#youngCanopyGrad)"/>
+            <ellipse cx="53" cy="45" rx="4.5" ry="3.2" fill="#e6ffd6" opacity="0.5"/>
+          </svg>
+        </div>
       </div>
 
       <div class="tree-stage-img" data-stage="matureTree">
-        <svg viewBox="0 0 120 120"><defs><radialGradient id="matureCanopyGrad" cx="40%" cy="34%"><stop offset="0%" stop-color="#8bea76"/><stop offset="100%" stop-color="#246f3c"/></radialGradient></defs>
-        <ellipse cx="60" cy="114" rx="30" ry="7" fill="rgba(70,50,30,0.25)"/>
-        <path d="M53 110 C54 87 53 67 57 50 C59 46 61 46 63 50 C67 67 66 87 67 110 Z" fill="#7c5a3f"/>
-        <circle cx="60" cy="48" r="24" fill="url(#matureCanopyGrad)"/>
-        <circle cx="40" cy="62" r="18" fill="#3b9049"/><circle cx="80" cy="62" r="18" fill="#3b9049"/></svg>
+        <div class="stage-3d sway-slow">
+          <svg viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="matureTrunkGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#927650"/>
+                <stop offset="100%" stop-color="#5a4128"/>
+              </linearGradient>
+              <radialGradient id="matureCanopyGrad" cx="37%" cy="28%" r="75%">
+                <stop offset="0%" stop-color="#c3fca7"/>
+                <stop offset="45%" stop-color="#8bea76"/>
+                <stop offset="100%" stop-color="#1c5730"/>
+              </radialGradient>
+              <radialGradient id="matureCanopySideGrad" cx="37%" cy="28%" r="75%">
+                <stop offset="0%" stop-color="#a8ed8c"/>
+                <stop offset="55%" stop-color="#3b9049"/>
+                <stop offset="100%" stop-color="#194a24"/>
+              </radialGradient>
+              <radialGradient id="matureShadowGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(42,30,17,0.34)"/>
+                <stop offset="100%" stop-color="rgba(42,30,17,0)"/>
+              </radialGradient>
+            </defs>
+            <ellipse class="stage-cast-shadow" cx="60" cy="114" rx="30" ry="7.2" fill="url(#matureShadowGrad)"/>
+            <path d="M53 110 C54 87 53 67 57 50 C59 46 61 46 63 50 C67 67 66 87 67 110 Z" fill="url(#matureTrunkGrad)"/>
+            <circle cx="40" cy="62" r="18" fill="url(#matureCanopySideGrad)"/>
+            <circle cx="80" cy="62" r="18" fill="url(#matureCanopySideGrad)"/>
+            <circle cx="60" cy="48" r="24" fill="url(#matureCanopyGrad)"/>
+            <ellipse cx="51" cy="38" rx="5.5" ry="3.8" fill="#e9ffd9" opacity="0.5"/>
+          </svg>
+        </div>
       </div>
 
       <div class="tree-stage-img" data-stage="oldTree">
-        <svg viewBox="0 0 120 120"><defs><radialGradient id="oldCanopyGrad" cx="40%" cy="30%"><stop offset="0%" stop-color="#9bf383"/><stop offset="100%" stop-color="#1f6337"/></radialGradient></defs>
-        <ellipse cx="60" cy="114" rx="34" ry="7" fill="rgba(65,48,30,0.27)"/>
-        <path d="M50 110 C50 86 50 63 56 42 C59 37 61 37 64 42 C70 63 70 86 70 110 Z" fill="#75553b"/>
-        <circle cx="60" cy="44" r="28" fill="url(#oldCanopyGrad)"/>
-        <circle cx="36" cy="60" r="20" fill="#2f7f44"/><circle cx="84" cy="60" r="20" fill="#2f7f44"/>
-        <g id="oldTreeFruits">
-          <circle cx="49" cy="50" r="3.4" fill="#ff7043" opacity="0"/>
-          <circle cx="67" cy="48" r="3.4" fill="#ff7043" opacity="0"/>
-          <circle cx="77" cy="58" r="3.2" fill="#ff7043" opacity="0"/>
-          <circle cx="41" cy="61" r="3.2" fill="#ff7043" opacity="0"/>
-          <circle cx="59" cy="63" r="3.5" fill="#ff7043" opacity="0"/>
-          <circle cx="71" cy="70" r="3.2" fill="#ff7043" opacity="0"/>
-          <circle cx="47" cy="73" r="3.2" fill="#ff7043" opacity="0"/>
-          <circle cx="61" cy="78" r="3.3" fill="#ff7043" opacity="0"/>
-          <circle cx="82" cy="67" r="3.1" fill="#ff7043" opacity="0"/>
-          <circle cx="34" cy="68" r="3.1" fill="#ff7043" opacity="0"/>
-        </g></svg>
+        <div class="stage-3d sway-slow">
+          <svg viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="oldTrunkGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#8c724e"/>
+                <stop offset="100%" stop-color="#503a24"/>
+              </linearGradient>
+              <radialGradient id="oldCanopyGrad" cx="36%" cy="26%" r="75%">
+                <stop offset="0%" stop-color="#cbffae"/>
+                <stop offset="42%" stop-color="#9bf383"/>
+                <stop offset="100%" stop-color="#164a26"/>
+              </radialGradient>
+              <radialGradient id="oldCanopySideGrad" cx="36%" cy="26%" r="75%">
+                <stop offset="0%" stop-color="#a8ed8c"/>
+                <stop offset="55%" stop-color="#2f7f44"/>
+                <stop offset="100%" stop-color="#123d1f"/>
+              </radialGradient>
+              <radialGradient id="oldShadowGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(40,28,16,0.36)"/>
+                <stop offset="100%" stop-color="rgba(40,28,16,0)"/>
+              </radialGradient>
+            </defs>
+            <ellipse class="stage-cast-shadow" cx="60" cy="114" rx="34" ry="7.4" fill="url(#oldShadowGrad)"/>
+            <path d="M50 110 C50 86 50 63 56 42 C59 37 61 37 64 42 C70 63 70 86 70 110 Z" fill="url(#oldTrunkGrad)"/>
+            <circle cx="36" cy="60" r="20" fill="url(#oldCanopySideGrad)"/>
+            <circle cx="84" cy="60" r="20" fill="url(#oldCanopySideGrad)"/>
+            <circle cx="60" cy="44" r="28" fill="url(#oldCanopyGrad)"/>
+            <ellipse cx="49" cy="32" rx="6.5" ry="4.4" fill="#ecffdc" opacity="0.5"/>
+            <g id="oldTreeFruits">
+              <circle cx="49" cy="50" r="3.4" fill="#ff7043" opacity="0"/>
+              <circle cx="67" cy="48" r="3.4" fill="#ff7043" opacity="0"/>
+              <circle cx="77" cy="58" r="3.2" fill="#ff7043" opacity="0"/>
+              <circle cx="41" cy="61" r="3.2" fill="#ff7043" opacity="0"/>
+              <circle cx="59" cy="63" r="3.5" fill="#ff7043" opacity="0"/>
+              <circle cx="71" cy="70" r="3.2" fill="#ff7043" opacity="0"/>
+              <circle cx="47" cy="73" r="3.2" fill="#ff7043" opacity="0"/>
+              <circle cx="61" cy="78" r="3.3" fill="#ff7043" opacity="0"/>
+              <circle cx="82" cy="67" r="3.1" fill="#ff7043" opacity="0"/>
+              <circle cx="34" cy="68" r="3.1" fill="#ff7043" opacity="0"/>
+            </g>
+          </svg>
+        </div>
       </div>
 
       <div class="particle-layer" id="particleLayer"></div>
@@ -116,46 +295,7 @@
     <p class="stage-name" id="stageName">Seed</p>
     <div class="progress-track" id="progressTrack"><div class="progress-fill" id="progressFill"></div></div>
     <p class="progress-text" id="progressText">0 / 50 to Germination</p>
-  </section>
-
-  <!-- Challenge Actions -->
-  <section class="card">
-    <div class="card-head"><h3>⚔️ Challenge Actions</h3></div>
-    <p class="card-sub">Pick a response when a challenge appears.</p>
-    <div class="action-grid">
-      <button class="action-btn" data-action="fight" id="fightBtn">
-        <span class="icon">⚔️</span><span class="name">Fight</span>
-        <span class="meta">10 FP · 70% · +35 / −12</span>
-      </button>
-      <button class="action-btn" data-action="endure" id="endureBtn">
-        <span class="icon">🛡️</span><span class="name">Endure</span>
-        <span class="meta">5 FP · Guaranteed · +15</span>
-      </button>
-      <button class="action-btn" data-action="giveup" id="giveUpBtn">
-        <span class="icon">🍂</span><span class="name">Give Up</span>
-        <span class="meta">0 FP · −60 progress</span>
-      </button>
-    </div>
-  </section>
-
-  <!-- Daily Tasks -->
-  <section class="card">
-    <div class="card-head"><h3>🌿 Daily Tasks</h3></div>
-    <p class="card-sub">Nurture actions to grow the seed.</p>
-    <div class="action-grid">
-      <button class="action-btn" data-action="water" id="waterBtn">
-        <span class="icon">💧</span><span class="name">Water</span>
-        <span class="meta">5 FP · +20 growth</span>
-      </button>
-      <button class="action-btn" data-action="protect" id="protectBtn">
-        <span class="icon">🛡️</span><span class="name">Protect</span>
-        <span class="meta">10 FP · +30 growth</span>
-      </button>
-      <button class="action-btn" data-action="fertilize" id="fertilizeBtn">
-        <span class="icon">✨</span><span class="name">Fertilize</span>
-        <span class="meta">15 FP · +48 growth</span>
-      </button>
-    </div>
+    <p class="tap-hint">🌿 Tap your tree to tend to it</p>
   </section>
 
   <!-- Faith Activities -->
@@ -186,6 +326,52 @@
     <div class="login-grid" id="loginGridModal"></div>
     <button class="btn" id="claimTodayBtn" style="width:100%;margin-top:0.75rem;">Claim Today</button>
     <button class="btn secondary" id="closeDailyLoginBtn" style="width:100%;margin-top:0.5rem;">Close</button>
+  </div>
+</div>
+
+<!-- Daily Tasks modal (opened by tapping the tree) -->
+<div class="modal" id="dailyTasksModal" hidden>
+  <div class="modal-content">
+    <h2>🌿 Tend Your Tree</h2>
+    <p class="card-sub">Nurture actions to grow the seed.</p>
+    <div class="action-grid">
+      <button class="action-btn" data-action="water" id="waterBtn">
+        <span class="icon">💧</span><span class="name">Water</span>
+        <span class="meta">5 FP · +20 growth</span>
+      </button>
+      <button class="action-btn" data-action="protect" id="protectBtn">
+        <span class="icon">🛡️</span><span class="name">Protect</span>
+        <span class="meta">10 FP · +30 growth</span>
+      </button>
+      <button class="action-btn" data-action="fertilize" id="fertilizeBtn">
+        <span class="icon">✨</span><span class="name">Fertilize</span>
+        <span class="meta">15 FP · +48 growth</span>
+      </button>
+    </div>
+    <button class="btn secondary" id="closeDailyTasksBtn" style="width:100%;margin-top:0.9rem;">Close</button>
+  </div>
+</div>
+
+<!-- Challenge event modal — appears on its own while tending the tree,
+     is never opened directly by the player. -->
+<div class="modal" id="challengeModal" hidden>
+  <div class="modal-content">
+    <h2>⚡ A Challenge Appears!</h2>
+    <p class="card-sub" id="challengeFlavorText">Something is testing your young tree. How do you respond?</p>
+    <div class="action-grid">
+      <button class="action-btn" data-action="fight" id="fightBtn">
+        <span class="icon">⚔️</span><span class="name">Fight</span>
+        <span class="meta">10 FP · 70% · +35 / −12</span>
+      </button>
+      <button class="action-btn" data-action="endure" id="endureBtn">
+        <span class="icon">🛡️</span><span class="name">Endure</span>
+        <span class="meta">5 FP · Guaranteed · +15</span>
+      </button>
+      <button class="action-btn" data-action="giveup" id="giveUpBtn">
+        <span class="icon">🍂</span><span class="name">Give Up</span>
+        <span class="meta">0 FP · −60 progress</span>
+      </button>
+    </div>
   </div>
 </div>
 
