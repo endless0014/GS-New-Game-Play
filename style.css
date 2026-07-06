@@ -501,7 +501,7 @@ button {
 }
 
 .action-btn[data-action="water"]     { --action-soft: var(--c-water-soft); }
-.action-btn[data-action="protect"]   { --action-soft: var(--c-protect-soft); }
+.action-btn[data-action="prune"]      { --action-soft: var(--c-protect-soft); }
 .action-btn[data-action="fertilize"] { --action-soft: var(--c-fertilize-soft); }
 .action-btn[data-action="fight"]     { --action-soft: var(--c-fight-soft); }
 .action-btn[data-action="endure"]    { --action-soft: var(--c-endure-soft); }
@@ -511,6 +511,14 @@ button {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
+}
+
+.tend-step-hint {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--accent-strong);
+  font-weight: 700;
+  margin: 0.7rem 0 0;
 }
 
 /* ---------------- Result popup (per-action accent, not generic) ---------------- */

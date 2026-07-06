@@ -38,7 +38,6 @@
   <section class="card">
     <div class="card-head">
       <h3>🌱 Seed Growth</h3>
-      <button class="btn secondary" id="upgradeRootsBtn">Upgrade Roots (10 FP)</button>
     </div>
 
     <div class="tree-stage-wrap" id="treeStageWrap" role="button" tabindex="0" aria-label="Open daily tasks">
@@ -319,12 +318,13 @@
       <button class="faith-btn" data-faith="bible" data-fp="2" data-period="day">📘 Bible Reading <span>+2 FP</span></button>
       <button class="faith-btn" data-faith="devotion" data-fp="4" data-period="day">🕊️ Daily Devotion <span>+4 FP</span></button>
       <button class="faith-btn" data-faith="smallgroup" data-fp="10" data-period="week">🧑‍🤝‍🧑 Small Group <span>+10 FP</span></button>
-      <button class="faith-btn" data-faith="worship" data-fp="15" data-period="week">🏠 Worship Attendance <span>+15 FP</span></button>
+      <button class="faith-btn" data-faith="worship" data-fp="15" data-period="week" data-sunday-only="true">🏠 Worship Attendance <span>+15 FP</span></button>
     </div>
+    <p class="card-sub" id="worshipNote" style="margin-top:0.5rem;"></p>
   </section>
 
-  <!-- Share the Gospel -->
-  <section class="card">
+  <!-- Share the Gospel — only appears once the tree reaches Young Tree -->
+  <section class="card" id="gospelCard" hidden>
     <div class="card-head"><h3>📢 Share the Gospel</h3></div>
     <p class="card-sub">Tell someone about your faith today — this also feeds growth straight into your tree, not just your FP balance.</p>
     <button class="faith-btn gospel-btn" data-faith="gospel" data-fp="8" data-growth="15" data-period="day" style="width:100%;">📢 Share the Gospel <span>+8 FP · +15 growth</span></button>
@@ -357,6 +357,7 @@
     <div class="card-head"><h3>🌱 Choose Your Seed</h3></div>
     <p class="card-sub">Pick which spiritual fruit you're growing toward. This changes your canopy, fruit color, and matches you with its verse.</p>
     <div class="tree-type-grid" id="treeTypeGrid"></div>
+    <button class="btn secondary" id="resetTreeBtn" style="width:100%;margin-top:0.9rem;">🔄 Reset Tree &amp; Choose New Seed</button>
   </section>
 
   <!-- Test tools -->
@@ -379,6 +380,15 @@
   <button class="bottom-nav-item" data-tab="profile"><span class="bn-icon">👤</span><span>Profile</span></button>
 </nav>
 
+<!-- First-time onboarding: choosing a seed is required before anything else -->
+<div class="modal" id="seedChoiceModal" hidden>
+  <div class="modal-content">
+    <h2>🌱 Choose Your Seed</h2>
+    <p class="card-sub">Pick the spiritual fruit you want to grow toward. Challenges you face will relate to this. You can change it later in Profile.</p>
+    <div class="tree-type-grid" id="seedChoiceGrid"></div>
+  </div>
+</div>
+
 <!-- Daily login modal -->
 <div class="modal" id="dailyLoginModal" hidden>
   <div class="modal-content">
@@ -394,21 +404,22 @@
 <div class="modal" id="dailyTasksModal" hidden>
   <div class="modal-content">
     <h2>🌿 Tend Your Tree</h2>
-    <p class="card-sub">Nurture actions to grow the seed.</p>
+    <p class="card-sub">Tend to your tree in order: Water, then Prune, then Fertilize.</p>
     <div class="action-grid">
       <button class="action-btn" data-action="water" id="waterBtn">
         <span class="icon">💧</span><span class="name">Water</span>
-        <span class="meta">5 FP · +20 growth</span>
+        <span class="meta">10 FP · +20 growth</span>
       </button>
-      <button class="action-btn" data-action="protect" id="protectBtn">
-        <span class="icon">🛡️</span><span class="name">Protect</span>
+      <button class="action-btn" data-action="prune" id="pruneBtn">
+        <span class="icon">✂️</span><span class="name">Prune</span>
         <span class="meta">10 FP · +30 growth</span>
       </button>
       <button class="action-btn" data-action="fertilize" id="fertilizeBtn">
         <span class="icon">✨</span><span class="name">Fertilize</span>
-        <span class="meta">15 FP · +48 growth</span>
+        <span class="meta">10 FP · +48 growth</span>
       </button>
     </div>
+    <p class="tend-step-hint" id="tendStepHint"></p>
     <button class="btn secondary" id="closeDailyTasksBtn" style="width:100%;margin-top:0.9rem;">Close</button>
   </div>
 </div>

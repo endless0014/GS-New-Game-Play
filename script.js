@@ -16,16 +16,20 @@ const CONFIG = {
   ],
   fullBloomThreshold: 1500,
   pointsPerFruit: 100,
-  upgradeRootsCost: 10,
-  upgradeRootsGrowth: 10,
 
   actions: {
     fight:     { label: 'Fight',     icon: '⚔️', cost: 10, successRate: 0.7, reward: 35, failPenalty: 12, accent: '--c-fight', type: 'challenge' },
-    endure:    { label: 'Endure',    icon: '🛡️', cost: 5,  successRate: 1.0, reward: 15, failPenalty: 0,  accent: '--c-endure', type: 'challenge' },
+    // Endure used to hand out a free +15 growth for doing nothing risky,
+    // which made it a strictly-better, no-tension choice. Now it's a true
+    // passive hold: costs FP, always "succeeds", but grows nothing.
+    endure:    { label: 'Endure',    icon: '🛡️', cost: 5,  successRate: 1.0, reward: 0,  failPenalty: 0,  accent: '--c-endure', type: 'challenge' },
     giveup:    { label: 'Give Up',   icon: '🍂', cost: 0,  successRate: 1.0, reward: -60, failPenalty: 0, accent: '--c-giveup', isRegression: true, type: 'challenge' },
-    water:     { label: 'Water',     icon: '💧', cost: 5,  successRate: 1.0, reward: 20, failPenalty: 0,  accent: '--c-water', type: 'task' },
-    protect:   { label: 'Protect',   icon: '🛡️', cost: 10, successRate: 1.0, reward: 30, failPenalty: 0,  accent: '--c-protect', type: 'task' },
-    fertilize: { label: 'Fertilize', icon: '✨', cost: 15, successRate: 1.0, reward: 48, failPenalty: 0,  accent: '--c-fertilize', type: 'task' }
+    // Tend-your-tree actions now cost the same FP each, since they're a
+    // required sequence (Water → Prune → Fertilize) rather than a menu
+    // of options to optimize between.
+    water:     { label: 'Water',     icon: '💧', cost: 10, successRate: 1.0, reward: 20, failPenalty: 0,  accent: '--c-water', type: 'task', step: 0 },
+    prune:     { label: 'Prune',     icon: '✂️', cost: 10, successRate: 1.0, reward: 30, failPenalty: 0,  accent: '--c-protect', type: 'task', step: 1 },
+    fertilize: { label: 'Fertilize', icon: '✨', cost: 10, successRate: 1.0, reward: 48, failPenalty: 0,  accent: '--c-fertilize', type: 'task', step: 2 }
   },
 
   // Chance a Challenge event interrupts after finishing a Daily Task —
@@ -107,11 +111,11 @@ const CONFIG = {
   // Seed types — "Choose Your Seed": five spiritual-fruit themes, each
   // with its own verse and color identity, matching the original design.
   seedTypes: {
-    faith: { label: 'Faith', icon: '✝️', pill: '#f16a5e', soft: '#fdeceb', canopyHi: '#ffcfc9', canopyMid: '#f16a5e', canopyLo: '#7a2b23', canopySideLo: '#6b241d', fruitColor: '#f16a5e', verseRef: 'Matthew 17:20', verseText: 'Even small faith moves mountains' },
-    love:  { label: 'Love',  icon: '❤️', pill: '#ef4f8b', soft: '#fdeaf1', canopyHi: '#ffd3e6', canopyMid: '#ef4f8b', canopyLo: '#7d1d43', canopySideLo: '#6e1a3b', fruitColor: '#ef4f8b', verseRef: '1 Corinthians 13:13', verseText: 'Greatest seed of all virtues' },
-    hope:  { label: 'Hope',  icon: '🌈', pill: '#2bbfa0', soft: '#e6f9f5', canopyHi: '#b9f3e6', canopyMid: '#2bbfa0', canopyLo: '#124a3e', canopySideLo: '#0f3f35', fruitColor: '#2bbfa0', verseRef: 'Romans 5:5', verseText: 'Hope does not disappoint' },
-    peace: { label: 'Peace', icon: '☮️', pill: '#7fd8ae', soft: '#eafaf1', canopyHi: '#d8f8e8', canopyMid: '#7fd8ae', canopyLo: '#396f52', canopySideLo: '#316148', fruitColor: '#7fd8ae', verseRef: 'James 3:18', verseText: 'Peace sown yields righteousness' },
-    joy:   { label: 'Joy',   icon: '😊', pill: '#f6d24e', soft: '#fffaea', canopyHi: '#fff2c2', canopyMid: '#f6d24e', canopyLo: '#7d5f10', canopySideLo: '#6e530e', fruitColor: '#f6d24e', verseRef: 'Galatians 5:22', verseText: 'Joy is fruit of the Spirit' }
+    faith: { label: 'Faith', icon: '✝️', pill: '#f16a5e', soft: '#fdeceb', canopyHi: '#ffcfc9', canopyMid: '#f16a5e', canopyLo: '#7a2b23', canopySideLo: '#6b241d', fruitColor: '#f16a5e', verseRef: 'Matthew 17:20', verseText: 'Even small faith moves mountains', challengeKeys: ['doubt', 'temptation', 'fear'] },
+    love:  { label: 'Love',  icon: '❤️', pill: '#ef4f8b', soft: '#fdeaf1', canopyHi: '#ffd3e6', canopyMid: '#ef4f8b', canopyLo: '#7d1d43', canopySideLo: '#6e1a3b', fruitColor: '#ef4f8b', verseRef: '1 Corinthians 13:13', verseText: 'Greatest seed of all virtues', challengeKeys: ['loneliness', 'anger', 'comparison'] },
+    hope:  { label: 'Hope',  icon: '🌈', pill: '#2bbfa0', soft: '#e6f9f5', canopyHi: '#b9f3e6', canopyMid: '#2bbfa0', canopyLo: '#124a3e', canopySideLo: '#0f3f35', fruitColor: '#2bbfa0', verseRef: 'Romans 5:5', verseText: 'Hope does not disappoint', challengeKeys: ['fear', 'grief', 'doubt'] },
+    peace: { label: 'Peace', icon: '☮️', pill: '#7fd8ae', soft: '#eafaf1', canopyHi: '#d8f8e8', canopyMid: '#7fd8ae', canopyLo: '#396f52', canopySideLo: '#316148', fruitColor: '#7fd8ae', verseRef: 'James 3:18', verseText: 'Peace sown yields righteousness', challengeKeys: ['anxiety', 'anger', 'comparison'] },
+    joy:   { label: 'Joy',   icon: '😊', pill: '#f6d24e', soft: '#fffaea', canopyHi: '#fff2c2', canopyMid: '#f6d24e', canopyLo: '#7d5f10', canopySideLo: '#6e530e', fruitColor: '#f6d24e', verseRef: 'Galatians 5:22', verseText: 'Joy is fruit of the Spirit', challengeKeys: ['grief', 'comparison', 'loneliness', 'anxiety'] }
   },
 
   dailyLoginRewards: [5, 5, 10, 10, 15, 15, 30],
@@ -133,6 +137,8 @@ function defaultState() {
     hasCelebratedFirstFruit: false,
     previousStage: 'seed',
     seedType: 'faith',
+    hasChosenSeedType: false,
+    tendStep: 0, // 0 = Water, 1 = Prune, 2 = Fertilize — must be done in order
     faithCompletions: {},   // key: `${faith}:${periodKey}` -> true
     dailyLogin: { claimedDays: [], streakDay: 1, lastClaimDate: '' }
   };
@@ -233,6 +239,7 @@ const STAGE_BACKGROUNDS = {
 };
 
 let frontLayerIsA = true;
+let skipNextLevelUpCelebration = false;
 
 /* Two-layer opacity crossfade — background-image cannot be transitioned
    directly in CSS, so the "next" gradient is painted into the hidden
@@ -308,7 +315,11 @@ function renderStage() {
     if (target) requestAnimationFrame(() => target.classList.add('active'));
 
     setStageBackground(stage.key, true);
-    playStageLevelUp();
+    if (skipNextLevelUpCelebration) {
+      skipNextLevelUpCelebration = false;
+    } else {
+      playStageLevelUp();
+    }
 
     state.previousStage = stage.key;
   } else if (!document.querySelector(`.tree-stage-img[data-stage="${stage.key}"]`).classList.contains('active')) {
@@ -399,6 +410,22 @@ function spawnShieldPulse() {
     { duration: 550, easing: 'ease-out' }
   );
   anim.onfinish = () => p.remove();
+}
+
+function spawnPrune() {
+  // A quick "snip" — a fast double-pulse on the tree plus a couple of
+  // small clippings falling, distinct from the shield/water/spark effects.
+  treeStageWrap.animate(
+    [
+      { transform: 'scale(1)' },
+      { transform: 'scale(0.97)' },
+      { transform: 'scale(1)' },
+      { transform: 'scale(0.985)' },
+      { transform: 'scale(1)' }
+    ],
+    { duration: 380, easing: 'ease-in-out' }
+  );
+  spawnParticles('p-leaf', 3);
 }
 
 function spawnImpactFlash(success) {
@@ -502,13 +529,23 @@ treeStageWrap.addEventListener('keydown', (e) => {
 });
 
 function openDailyTasks() {
+  if (!state.hasChosenSeedType) {
+    seedChoiceContext = 'onboarding';
+    el('seedChoiceModal').hidden = false;
+    return;
+  }
   el('dailyTasksModal').hidden = false;
 }
 el('closeDailyTasksBtn').addEventListener('click', () => { el('dailyTasksModal').hidden = true; });
 
 function openChallenge() {
   el('dailyTasksModal').hidden = true;
-  const challenge = CONFIG.challenges[Math.floor(Math.random() * CONFIG.challenges.length)];
+
+  const seedType = CONFIG.seedTypes[state.seedType] || CONFIG.seedTypes.faith;
+  const themed = CONFIG.challenges.filter(c => seedType.challengeKeys.includes(c.key));
+  const pool = themed.length ? themed : CONFIG.challenges;
+  const challenge = pool[Math.floor(Math.random() * pool.length)];
+
   el('challengeTitle').textContent = challenge.title;
   el('challengeFlavorText').textContent = challenge.flavor;
   el('challengeVerseText').textContent = challenge.verseText;
@@ -520,6 +557,12 @@ function openChallenge() {
 function runAction(key) {
   const cfg = CONFIG.actions[key];
   const button = document.querySelector(`.action-btn[data-action="${key}"]`);
+
+  if (cfg.type === 'task' && cfg.step !== state.tendStep) {
+    const nextKey = Object.keys(CONFIG.actions).find(k => CONFIG.actions[k].step === state.tendStep);
+    showToast(`Do ${CONFIG.actions[nextKey].label} first.`, 'warning');
+    return;
+  }
 
   if (state.faithPoints < cfg.cost) {
     showToast('Not enough Faith Points for that yet.', 'warning');
@@ -540,10 +583,14 @@ function runAction(key) {
   // Per-action animation
   if (key === 'water') spawnParticles('p-water', 6);
   else if (key === 'fertilize') spawnParticles('p-sparkle', 7);
-  else if (key === 'protect') spawnShieldPulse();
+  else if (key === 'prune') spawnPrune();
   else if (key === 'fight') spawnImpactFlash(isSuccess);
   else if (key === 'endure') spawnShieldPulse();
   else if (key === 'giveup') spawnDroop();
+
+  if (cfg.type === 'task') {
+    state.tendStep = (state.tendStep + 1) % 3;
+  }
 
   progressTrackEl.classList.remove('growth-success', 'growth-fail');
   void progressTrackEl.offsetWidth;
@@ -552,7 +599,7 @@ function runAction(key) {
   const detailText = isGiveUp
     ? `Progress regressed ${Math.abs(cfg.reward)} points.`
     : isSuccess
-      ? `+${cfg.reward} growth points.`
+      ? (cfg.reward > 0 ? `+${cfg.reward} growth points.` : 'You held steady — no growth gained or lost.')
       : `Failed — -${cfg.failPenalty} growth points.`;
 
   showResultPopup({
@@ -566,7 +613,7 @@ function runAction(key) {
   render();
 }
 
-['fight', 'endure', 'giveup', 'water', 'protect', 'fertilize'].forEach(key => {
+['fight', 'endure', 'giveup', 'water', 'prune', 'fertilize'].forEach(key => {
   const btn = document.querySelector(`.action-btn[data-action="${key}"]`);
   btn.addEventListener('click', () => runAction(key));
 });
@@ -574,33 +621,44 @@ function runAction(key) {
 function renderActionAvailability() {
   Object.entries(CONFIG.actions).forEach(([key, cfg]) => {
     const btn = document.querySelector(`.action-btn[data-action="${key}"]`);
-    if (btn) btn.disabled = state.faithPoints < cfg.cost;
+    if (!btn) return;
+    const wrongStep = cfg.type === 'task' && cfg.step !== state.tendStep;
+    btn.disabled = state.faithPoints < cfg.cost || wrongStep;
   });
-}
 
-/* ---------------- Upgrade Roots ---------------- */
-el('upgradeRootsBtn').addEventListener('click', () => {
-  if (state.faithPoints < CONFIG.upgradeRootsCost) {
-    showToast('Not enough Faith Points to upgrade roots.', 'warning');
-    return;
+  const nextKey = Object.keys(CONFIG.actions).find(k => CONFIG.actions[k].step === state.tendStep);
+  const hint = el('tendStepHint');
+  if (hint && nextKey) {
+    hint.textContent = `Next step: ${CONFIG.actions[nextKey].label} ${CONFIG.actions[nextKey].icon}`;
   }
-  state.faithPoints -= CONFIG.upgradeRootsCost;
-  applyGrowth(CONFIG.upgradeRootsGrowth);
-  spawnParticles('p-sparkle', 5);
-  showToast(`Roots upgraded! +${CONFIG.upgradeRootsGrowth} growth.`, 'success');
-  render();
-});
+}
 
 /* ---------------- Faith activities (now require a photo upload) ---------------- */
 function renderFaithButtons() {
+  const isSunday = new Date().getDay() === 0;
+
   document.querySelectorAll('.faith-btn').forEach(btn => {
     const faith = btn.dataset.faith;
     const unit = btn.dataset.period;
     const key = `${faith}:${periodKeyFor(unit)}`;
     const done = !!state.faithCompletions[key];
-    btn.disabled = done;
-    btn.style.opacity = done ? '0.55' : '1';
+    const sundayLocked = btn.dataset.sundayOnly === 'true' && !isSunday;
+    btn.disabled = done || sundayLocked;
+    btn.style.opacity = (done || sundayLocked) ? '0.55' : '1';
   });
+
+  const worshipNote = el('worshipNote');
+  if (worshipNote) {
+    worshipNote.textContent = isSunday
+      ? "It's Sunday — Worship Attendance is available today."
+      : 'Worship Attendance can only be logged on Sundays.';
+  }
+
+  // Share the Gospel unlocks once the tree reaches Young Tree or beyond.
+  const stageOrder = CONFIG.stages.map(s => s.key);
+  const currentIndex = stageOrder.indexOf(getCurrentStage().key);
+  const youngTreeIndex = stageOrder.indexOf('youngTree');
+  el('gospelCard').hidden = currentIndex < youngTreeIndex;
 }
 
 let pendingFaithBtn = null;
@@ -611,6 +669,11 @@ document.querySelectorAll('.faith-btn').forEach(btn => {
     const faith = btn.dataset.faith;
     const unit = btn.dataset.period;
     const key = `${faith}:${periodKeyFor(unit)}`;
+
+    if (btn.dataset.sundayOnly === 'true' && new Date().getDay() !== 0) {
+      showToast('Worship Attendance can only be logged on Sundays.', 'warning');
+      return;
+    }
 
     if (state.faithCompletions[key]) {
       showToast('Already completed for this period.', 'warning');
@@ -761,8 +824,7 @@ function applySeedTypePalette() {
 }
 
 function renderSeedTypeGrid() {
-  const grid = el('treeTypeGrid');
-  grid.innerHTML = Object.entries(CONFIG.seedTypes).map(([key, t]) => `
+  const cardsHtml = Object.entries(CONFIG.seedTypes).map(([key, t]) => `
     <button class="seed-type-card ${state.seedType === key ? 'selected' : ''}" data-seed-type="${key}"
             style="--seed-pill:${t.pill}; --seed-soft:${t.soft};">
       <span class="seed-pill">${t.icon} ${t.label}</span>
@@ -771,15 +833,41 @@ function renderSeedTypeGrid() {
     </button>
   `).join('');
 
-  grid.querySelectorAll('.seed-type-card').forEach(card => {
-    card.addEventListener('click', () => {
-      state.seedType = card.dataset.seedType;
-      applySeedTypePalette();
-      renderSeedTypeGrid();
-      showToast(`Your seed is now planted in ${CONFIG.seedTypes[state.seedType].label}.`, 'success');
-      saveState();
+  [el('treeTypeGrid'), el('seedChoiceGrid')].forEach(grid => {
+    if (!grid) return;
+    grid.innerHTML = cardsHtml;
+    grid.querySelectorAll('.seed-type-card').forEach(card => {
+      card.addEventListener('click', () => selectSeedType(card.dataset.seedType));
     });
   });
+}
+
+let seedChoiceContext = 'onboarding'; // 'onboarding' | 'reset' | 'profile'
+
+function selectSeedType(key) {
+  state.seedType = key;
+  applySeedTypePalette();
+  renderSeedTypeGrid();
+  saveState();
+
+  const isOnboardingModalOpen = el('seedChoiceModal').hidden === false;
+
+  if (isOnboardingModalOpen && seedChoiceContext === 'onboarding') {
+    state.hasChosenSeedType = true;
+    el('seedChoiceModal').hidden = true;
+    saveState();
+    showToast(`Your seed is planted in ${CONFIG.seedTypes[key].label}. Let's grow!`, 'success');
+    // Now that onboarding is done, surface the daily reward if it hasn't
+    // been claimed yet — same as a normal return visit would.
+    if (!hasClaimedToday()) {
+      setTimeout(() => { el('dailyLoginModal').hidden = false; }, 400);
+    }
+  } else if (isOnboardingModalOpen && seedChoiceContext === 'reset') {
+    el('seedChoiceModal').hidden = true;
+    showToast(`Your tree is growing fresh as ${CONFIG.seedTypes[key].label} now.`, 'success');
+  } else {
+    showToast(`Your seed is now planted in ${CONFIG.seedTypes[key].label}.`, 'success');
+  }
 }
 
 /* ---------------- Ranking (sample local leaderboard) ---------------- */
@@ -809,6 +897,22 @@ el('addTestFpBtn').addEventListener('click', () => {
   state.faithPoints += 100;
   showToast('+100 FP added for testing.', 'info');
   render();
+});
+
+el('resetTreeBtn').addEventListener('click', () => {
+  if (!confirm('Reset your tree\'s growth and choose a new seed to grow? Your FP and streak stay as they are.')) return;
+  state.treeProgress = 0;
+  state.maxBloomReached = false;
+  state.fruitCount = 0;
+  state.pointsForFruit = 0;
+  state.hasCelebratedFirstFruit = false;
+  state.previousStage = null; // forces the stage-swap/background to re-run back to Seed
+  skipNextLevelUpCelebration = true;
+  document.querySelectorAll('.tree-stage-img').forEach(elImg => elImg.classList.remove('active'));
+  render();
+  seedChoiceContext = 'reset';
+  el('seedChoiceModal').hidden = false;
+  showToast('Your tree has been reset. Choose a new seed to grow.', 'info');
 });
 
 el('resetProgressBtn').addEventListener('click', () => {
@@ -876,10 +980,11 @@ renderVerseOfDay();
 renderSeedTypeGrid();
 render({ persist: false });
 
-// Surface the daily reward automatically on load if it hasn't been
-// claimed yet today, instead of waiting for the player to tap "Open."
-if (!hasClaimedToday()) {
-  setTimeout(() => {
-    el('dailyLoginModal').hidden = false;
-  }, 400);
+if (!state.hasChosenSeedType) {
+  // First-ever visit: choosing a seed comes before anything else,
+  // including the daily reward popup.
+  seedChoiceContext = 'onboarding';
+  setTimeout(() => { el('seedChoiceModal').hidden = false; }, 400);
+} else if (!hasClaimedToday()) {
+  setTimeout(() => { el('dailyLoginModal').hidden = false; }, 400);
 }

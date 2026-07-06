@@ -54,6 +54,19 @@ The Seed stage specifically got a pass to look and feel three-dimensional:
 
 This same layered-shading + idle-motion approach can be extended to the other six stages if you'd like the whole tree to feel more dimensional, not just the seed.
 
+## Onboarding + themed challenges + reset tree (latest update)
+
+- **Choose Your Seed is now mandatory on first-ever visit** — it appears automatically before anything else, including the Daily Reward popup. There's no way to dismiss it without picking one. Once chosen, the Daily Reward popup follows right after (if not already claimed today), same as a normal return visit.
+- **Challenges are now filtered by your chosen seed type**, not pulled from all eight equally:
+  - Faith → Doubt, Temptation, Fear
+  - Love → Loneliness, Anger, Comparison
+  - Hope → Fear, Grief, Doubt
+  - Peace → Anxiety, Anger, Comparison
+  - Joy → Grief, Comparison, Loneliness, Anxiety
+  Verified in testing — repeatedly forcing challenges while playing as "Love" only ever surfaced Loneliness/Anger/Comparison, never the other five.
+- **Profile now has two distinct reset options**: "Reset Progress" (full wipe — FP, streak, tree, everything) and the new **"🔄 Reset Tree & Choose New Seed"**, which only resets tree growth (back to Seed stage, fruit cleared) while keeping FP/streak intact, then reopens the seed picker so you can grow a different path without losing your points.
+- **Reset Tree confirmed to actually return to Seed stage** — verified in testing: tree progress goes to 0, the Seed SVG becomes active, and the stage label reads "Seed" immediately after resetting. Also fixed a related bug this surfaced: the reset was incorrectly firing the "🌟 Your tree grew into the Seed stage!" growth-celebration toast (backwards messaging for a reset) and could, in one path, incorrectly reopen the Daily Reward popup as if it were first-time onboarding — both are now suppressed specifically for the reset flow while still firing normally for real growth.
+
 ## Major addition: bottom nav, real content, and a values-driven Challenge system
 
 - **Bottom navigation** (Home / Tasks / Ranking / Profile) — the game is now organized into tabs instead of one long scroll.
@@ -65,6 +78,43 @@ This same layered-shading + idle-motion approach can be extended to the other si
 - **Sample Leaderboard** (Ranking tab) — mock local data plus your real current FP, sorted together, to preview the layout.
 
 All of this was tested end-to-end in a headless browser: tab switching, the photo-upload gate (confirm button disabled until a photo is attached), Share the Gospel's dual FP+growth reward, tree species retinting the live canopy, and the challenge popup rendering its verse — zero console errors.
+
+## Role-based permissions, teams, and gameplay rebalance (newest update)
+
+**1. Admin Dashboard: 4-tier permission matrix + Teams**
+- **Admin**: every action available — add FP, View, Open UI, Reset Password, Delete, Reset Progress, and changing anyone's role.
+- **Moderator**: everything the same *except* Reset Progress and changing roles — both are visibly disabled with a tooltip explaining why, confirmed by testing (both correctly locked when previewing as Moderator, both correctly enabled as Admin).
+- **Team Leader**: a completely different view — their own team roster with a **🔔 Remind** button per member (simulated notification), plus a **Pending Join Requests** list with Approve/Decline. A "Specifically, you are: [name]" selector lets you simulate being any of the leaders in the mock data.
+- **User**: a **Join a Team** view listing every Leader with a **Request to Join** button. Once requested, it shows "Requested ⏳" until the Leader approves; once approved, it shows "✓ On this team" with a **Leave Team** option. Also simulatable via a "Specifically, you are: [name]" selector.
+- All four views tested end-to-end: promoting/approving/declining/leaving/requesting all update state correctly and re-render immediately.
+- Also added: a **Deleted Players** section (Admin/Moderator only) so **Delete** isn't destructive — deleted players can be **Restored** — plus a read-only **View** modal for player details.
+
+**2. Task scheduling rules**
+- **Worship Attendance** can now only be logged on Sundays — locked the rest of the week with a note explaining why, verified by faking the browser's day-of-week in testing.
+- **Small Group** stays once-per-week (already correct from before). **Prayer, Bible Reading, Devotion** stay daily (already correct).
+- **Share the Gospel** is now hidden entirely until your tree reaches **Young Tree** stage — verified hidden at Seed, confirmed it appears once grown to Young Tree.
+
+**3. Removed "Upgrade Roots (10 FP)"** — gameplay tending (Water/Prune/Fertilize) is now the only way to grow the tree.
+
+**4. Tend Your Tree is now a required sequence, not a menu**
+- Water → Prune → Fertilize, in that order — attempting a step out of order is blocked with a toast telling you what to do first (e.g. "Do Water first").
+- All three now cost the same **10 FP** each, instead of three different costs.
+- "Protect" was renamed to **Prune** (✂️) — a clearer, tending-specific word — with its own distinct animation (a quick double-pulse "snip" plus a couple of falling clippings), separate from Endure's shield-pulse.
+- After Fertilize, the sequence loops back to Water so the cycle can repeat.
+
+**5. Challenge rebalance: Endure is now truly passive**
+- Endure previously handed out a free +15 growth for zero risk, quietly making it the best option in the game with none of the tension "enduring" should carry.
+- Endure now costs its FP but grants **0 growth** — a true, no-gain-no-loss pass-through — leaving Fight (70%/30% risk) and Give Up (guaranteed regression) as the two mechanics with real consequences.
+
+## Admin Dashboard: analytics + 4-tier roles (latest update)
+
+- **Logins per day chart** — bar chart, no external library (drawn on a plain `<canvas>`), defaults to the last 7 days but has a full date-range picker (start/end date inputs + Apply) backed by ~120 days of mock daily history, so you can browse further back than a week.
+- **Task completions per day chart** — a second bar chart (Daily Tasks + Challenges + Faith Activities combined per day), plus a breakdown panel below showing totals for each category over the selected range.
+- **4-tier role system**: User → Moderator → Leader → Admin, replacing the old binary Player/Admin. Each player card now has a role dropdown instead of a single toggle button.
+- **Only Admins can change roles** — a "Previewing as" selector at the top simulates viewing the dashboard as each tier; switching away from Admin visibly locks every role dropdown (with a real permission check in the code, not just a disabled attribute, mirroring what a real backend check would do).
+- Role filter chips updated to all four tiers.
+
+**Bug caught and fixed during testing**: the "Last 7 days" quick-range button shared a CSS class with the role-filter chips, and the role-filter's click handler was accidentally attaching itself to it too — clicking "Last 7 days" was silently wiping the entire player list (an `undefined` role matched nothing). Fixed by scoping the role-filter handler to its own container. Good reminder of why shared class names for unrelated controls are worth double-checking.
 
 ## Admin Dashboard sample (`admin.html`)
 

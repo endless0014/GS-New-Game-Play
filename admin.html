@@ -19,11 +19,50 @@
     <p>Sample / demo only — this data is local mock data, not connected to real players.</p>
   </header>
 
+  <section class="card viewer-role-card">
+    <div class="card-head">
+      <h3>Previewing as</h3>
+      <select id="viewerRoleSelect" class="admin-search" style="max-width:160px;">
+        <option value="user">User</option>
+        <option value="moderator">Moderator</option>
+        <option value="leader">Leader</option>
+        <option value="admin" selected>Admin</option>
+      </select>
+    </div>
+    <p class="card-sub" id="viewerRoleNote">Admins can change anyone's role. Other roles can view this dashboard but role controls are locked — try switching the dropdown above to see it change.</p>
+    <div id="asWhoRow" class="as-who-row" hidden>
+      <label>Specifically, you are:
+        <select id="asWhoSelect" class="admin-search"></select>
+      </label>
+    </div>
+  </section>
+
   <section class="card">
     <div class="stat-grid" id="statGrid"></div>
   </section>
 
   <section class="card">
+    <div class="card-head">
+      <h3>📈 Analytics</h3>
+    </div>
+    <div class="analytics-range">
+      <button class="chip active" id="last7Btn">Last 7 days</button>
+      <input type="date" id="rangeStart" class="admin-search range-date" />
+      <span class="range-sep">to</span>
+      <input type="date" id="rangeEnd" class="admin-search range-date" />
+      <button class="btn secondary" id="applyRangeBtn">Apply</button>
+    </div>
+
+    <h4 class="analytics-subhead">Logins per day</h4>
+    <canvas id="loginChart" height="160"></canvas>
+
+    <h4 class="analytics-subhead">Task completions per day</h4>
+    <canvas id="taskChart" height="160"></canvas>
+
+    <div class="task-breakdown" id="taskBreakdown"></div>
+  </section>
+
+  <section class="card" id="adminModView">
     <div class="card-head">
       <h3>Players</h3>
       <button class="btn secondary" id="addTestUserBtn">+ Add Demo Player</button>
@@ -33,13 +72,40 @@
       <input type="text" id="searchInput" placeholder="Search name or email…" class="admin-search" />
       <div class="role-chips" id="roleChips">
         <button class="chip active" data-role="all">All</button>
-        <button class="chip" data-role="player">Players</button>
-        <button class="chip" data-role="admin">Admins</button>
+        <button class="chip" data-role="user">User</button>
+        <button class="chip" data-role="moderator">Moderator</button>
+        <button class="chip" data-role="leader">Leader</button>
+        <button class="chip" data-role="admin">Admin</button>
       </div>
     </div>
 
     <div class="user-list" id="userList"></div>
     <p class="empty-state" id="emptyState" hidden>No players match your search.</p>
+  </section>
+
+  <section class="card" id="deletedUsersCard" hidden>
+    <div class="card-head"><h3>🗑️ Deleted Players</h3></div>
+    <p class="card-sub">Only Admins and Moderators can restore a deleted player.</p>
+    <div class="user-list" id="deletedUserList"></div>
+  </section>
+
+  <!-- Leader view: only their own team, plus pending join requests -->
+  <section class="card" id="leaderView" hidden>
+    <div class="card-head"><h3>🧑‍🤝‍🧑 Your Team</h3></div>
+    <p class="card-sub" id="leaderTeamNote"></p>
+    <div class="user-list" id="leaderTeamList"></div>
+    <p class="empty-state" id="leaderTeamEmpty" hidden>No team members yet.</p>
+
+    <h4 class="analytics-subhead">Pending join requests</h4>
+    <div class="user-list" id="leaderRequestsList"></div>
+    <p class="empty-state" id="leaderRequestsEmpty" hidden>No pending requests.</p>
+  </section>
+
+  <!-- User view: choose or apply to a leader's team -->
+  <section class="card" id="userView" hidden>
+    <div class="card-head"><h3>🌱 Join a Team</h3></div>
+    <p class="card-sub" id="userTeamNote"></p>
+    <div class="user-list" id="leaderOptionsList"></div>
   </section>
 
   <section class="test-tools">
@@ -55,6 +121,15 @@
     <p id="confirmBody" class="card-sub"></p>
     <button class="btn" id="confirmYesBtn" style="width:100%;background:var(--danger);box-shadow:none;">Confirm</button>
     <button class="btn secondary" id="confirmNoBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
+<!-- View Player modal (read-only) -->
+<div class="modal" id="viewUserModal" hidden>
+  <div class="modal-content">
+    <h2>Player Details</h2>
+    <div id="viewUserBody" class="view-user-body"></div>
+    <button class="btn secondary" id="closeViewUserBtn" style="width:100%;margin-top:0.75rem;">Close</button>
   </div>
 </div>
 
