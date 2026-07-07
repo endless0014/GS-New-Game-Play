@@ -620,7 +620,7 @@ function switchTab(tab) {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
   if (tab === 'ranking') renderRanking();
-  if (tab === 'profile') { renderSeedTypeGrid(); renderBadges(); }
+  if (tab === 'profile') renderBadges();
 }
 
 /* ---------------- Toasts ---------------- */
