@@ -5,16 +5,23 @@
    ============================================================ */
 
 const CONFIG = {
+  // Thresholds are scaled so a consistent daily player (logging in, doing
+  // faith activities, and tending the tree every day) reaches Old Tree
+  // around day ~25 of a month and collects a handful of fruit by day 30 —
+  // verified by simulation, not guesswork. The original numbers (50/150/
+  // 350/600/1000/1500) had a consistent player hitting full bloom by
+  // day ~16, with 17 fruit already banked by day 30 — the second half of
+  // the month had nothing left to grow toward.
   stages: [
     { key: 'seed',        min: 0,    label: 'Seed' },
-    { key: 'germination',  min: 50,   label: 'Germination' },
-    { key: 'seedling',    min: 150,  label: 'Seedling' },
-    { key: 'sapling',     min: 350,  label: 'Sapling' },
-    { key: 'youngTree',   min: 600,  label: 'Young Tree' },
-    { key: 'matureTree',  min: 1000, label: 'Mature Tree' },
-    { key: 'oldTree',     min: 1500, label: 'Old Tree' }
+    { key: 'germination',  min: 75,   label: 'Germination' },
+    { key: 'seedling',    min: 225,  label: 'Seedling' },
+    { key: 'sapling',     min: 525,  label: 'Sapling' },
+    { key: 'youngTree',   min: 900,  label: 'Young Tree' },
+    { key: 'matureTree',  min: 1500, label: 'Mature Tree' },
+    { key: 'oldTree',     min: 2250, label: 'Old Tree' }
   ],
-  fullBloomThreshold: 1500,
+  fullBloomThreshold: 2250,
   pointsPerFruit: 100,
 
   actions: {
@@ -119,10 +126,108 @@ const CONFIG = {
   },
 
   dailyLoginRewards: [5, 5, 10, 10, 15, 15, 30],
-  dailyLoginCompletionBonus: 25
+  dailyLoginCompletionBonus: 25,
+
+  // ---------------- Badges / achievements ----------------
+  // check(state) returns true once earned. Purely a collection layer —
+  // none of these affect gameplay balance.
+  badges: [
+    { id: 'streak7',    icon: '🔥', label: '7-Day Streak',      desc: 'Log in 7 days in a row.',            check: s => s.loginCyclesCompleted >= 1 },
+    { id: 'firstFruit', icon: '🍎', label: 'First Fruit',       desc: 'Grow your very first fruit.',        check: s => s.fruitCount >= 1 },
+    { id: 'fiveFruit',  icon: '🧺', label: 'Basketful',         desc: 'Collect 5 fruit from one tree.',      check: s => s.fruitCount >= 5 },
+    { id: 'oldTree',    icon: '🌳', label: 'Full Bloom',        desc: 'Reach Old Tree stage.',               check: s => s.previousStage === 'oldTree' },
+    { id: 'allSeeds',   icon: '🌈', label: 'Every Seed',        desc: 'Try all five seed types.',            check: s => new Set(s.seedTypesTried).size >= 5 },
+    { id: 'survivor10', icon: '🛡️', label: 'Steadfast',         desc: 'Face down 10 challenges.',            check: s => s.challengesSurvived >= 10 },
+    { id: 'gospel5',    icon: '📢', label: 'Voice of Faith',    desc: 'Share the Gospel 5 times.',           check: s => s.gospelShareCount >= 5 }
+  ],
+
+  // ---------------- Seasonal / limited-time events ----------------
+  // Each event has a start/end date (YYYY-MM-DD) and a small bonus multiplier
+  // applied to tend-cycle growth while it's active. Add more entries to
+  // schedule future events — nothing else in the code needs to change.
+  events: [
+    {
+      id: 'growth-sprint-2026-07',
+      label: '🌟 Growth Sprint Week',
+      description: 'Limited time: +25% growth from every Water, Prune, and Fertilize.',
+      start: '2026-07-01',
+      end: '2026-07-14',
+      growthMultiplier: 1.25
+    }
+  ],
+
+  // ---------------- Mock team (sandbox demo data) ----------------
+  // Standalone sample so "My Team" has something to show without a real
+  // backend — same spirit as the Admin Dashboard's mock players.
+  teamRoster: [
+    { name: 'Grace M.',  stage: 'Sapling',    streak: 5 },
+    { name: 'Daniel T.', stage: 'Young Tree', streak: 3 },
+    { name: 'Hannah R.', stage: 'Seedling',   streak: 7 },
+    { name: 'Samuel B.', stage: 'Mature Tree',streak: 12 }
+  ],
+  teamFeedSeed: [
+    { name: 'Grace M.',  action: 'prayed today',            icon: '🙏' },
+    { name: 'Daniel T.', action: 'reached Young Tree!',      icon: '🌳' },
+    { name: 'Hannah R.', action: 'shared the Gospel',        icon: '📢' },
+    { name: 'Samuel B.', action: 'grew a fruit!',            icon: '🍎' },
+    { name: 'Grace M.',  action: 'kept a 5-day streak',      icon: '🔥' }
+  ]
 };
 
 const STORAGE_KEY = 'growingSeedSandboxState_v1';
+
+/* ---------------- Sound + haptic feedback ----------------
+   Plain Web Audio API tones — no audio files/assets needed, and it works
+   fully offline. Respects state.soundEnabled (toggle lives in Profile). */
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    audioCtx = new AC();
+  }
+  return audioCtx;
+}
+
+function playTone(freqs, durationMs = 150, type = 'sine', volume = 0.14) {
+  if (!state.soundEnabled) return;
+  try {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    freqs.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      const start = now + i * 0.09;
+      gain.gain.setValueAtTime(volume, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + durationMs / 1000);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + durationMs / 1000 + 0.02);
+    });
+  } catch (e) { /* audio unavailable — fail silently, never block gameplay */ }
+}
+
+function vibrate(pattern) {
+  if (!state.soundEnabled) return; // one toggle controls both, per simplicity
+  if (navigator.vibrate) {
+    try { navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+  }
+}
+
+const SFX = {
+  tap:            () => playTone([440], 70, 'sine', 0.05),
+  fpGain:         () => playTone([660], 110, 'sine', 0.07),
+  growthSuccess:  () => playTone([523.25, 659.25], 170, 'sine', 0.09),
+  stageUp:        () => { playTone([523.25, 659.25, 783.99], 260, 'triangle', 0.13); vibrate([40, 30, 60]); },
+  fruit:          () => { playTone([659.25, 783.99, 987.77], 300, 'triangle', 0.13); vibrate([30, 20, 30, 20, 80]); },
+  fail:           () => playTone([220, 196], 220, 'sawtooth', 0.07),
+  badge:          () => { playTone([523.25, 659.25, 783.99, 1046.5], 350, 'triangle', 0.12); vibrate([50, 40, 50, 40, 100]); }
+};
 
 /* ---------------- State ---------------- */
 let state = loadState();
@@ -140,7 +245,18 @@ function defaultState() {
     hasChosenSeedType: false,
     tendStep: 0, // 0 = Water, 1 = Prune, 2 = Fertilize — must be done in order
     faithCompletions: {},   // key: `${faith}:${periodKey}` -> true
-    dailyLogin: { claimedDays: [], streakDay: 1, lastClaimDate: '' }
+    dailyLogin: { claimedDays: [], streakDay: 1, lastClaimDate: '' },
+
+    // --- New: personalization, sound, badges, tracking ---
+    treeName: '',
+    soundEnabled: true,
+    unlockedBadgeIcon: null, // which badge icon is shown next to the tree name
+    badges: {},              // key: badgeId -> true once unlocked
+    seedTypesTried: [],      // for the "Tried every seed type" badge
+    challengesSurvived: 0,   // Fight/Endure resolved (not Give Up)
+    gospelShareCount: 0,
+    loginCyclesCompleted: 0, // incremented each time a 7-day login cycle finishes
+    teamFeedReactions: {}    // key: feed item index -> { emoji: count }
   };
 }
 
@@ -284,6 +400,9 @@ function render(options = {}) {
   renderLoginGrids();
   renderFaithButtons();
   renderActionAvailability();
+  renderEventBanner();
+  renderTreeNameDisplay();
+  checkBadges();
 
   if (persist) saveState();
 }
@@ -341,6 +460,7 @@ function playStageLevelUp() {
   stageBurstEl.classList.add('playing');
 
   spawnParticles('p-sparkle', 8);
+  SFX.stageUp();
   showToast(`🌟 Your tree grew into the ${getCurrentStage().label} stage!`, 'success');
 }
 
@@ -353,6 +473,7 @@ function renderFruits() {
 }
 
 function onFruitGained() {
+  SFX.fruit();
   if (!state.hasCelebratedFirstFruit) {
     state.hasCelebratedFirstFruit = true;
     // Defer to after render so the fruit circle is already visible.
@@ -499,7 +620,7 @@ function switchTab(tab) {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
   if (tab === 'ranking') renderRanking();
-  if (tab === 'profile') renderSeedTypeGrid();
+  if (tab === 'profile') { renderSeedTypeGrid(); renderBadges(); }
 }
 
 /* ---------------- Toasts ---------------- */
@@ -569,6 +690,7 @@ function runAction(key) {
     return;
   }
 
+  SFX.tap();
   button.classList.add('pressed');
   setTimeout(() => button.classList.remove('pressed'), 200);
 
@@ -576,7 +698,14 @@ function runAction(key) {
 
   const isGiveUp = !!cfg.isRegression;
   const isSuccess = isGiveUp ? false : Math.random() < cfg.successRate;
-  const delta = isGiveUp ? cfg.reward : (isSuccess ? cfg.reward : -cfg.failPenalty);
+  let delta = isGiveUp ? cfg.reward : (isSuccess ? cfg.reward : -cfg.failPenalty);
+
+  // Apply any active seasonal event's growth multiplier to positive
+  // tend-cycle growth only (never boosts a challenge fail/regression).
+  const activeEvent = getActiveEvent();
+  if (activeEvent && cfg.type === 'task' && delta > 0) {
+    delta = Math.round(delta * activeEvent.growthMultiplier);
+  }
 
   applyGrowth(delta); // <-- unified path, fruit logic always runs
 
@@ -591,6 +720,11 @@ function runAction(key) {
   if (cfg.type === 'task') {
     state.tendStep = (state.tendStep + 1) % 3;
   }
+  if (cfg.type === 'challenge' && !isGiveUp) {
+    state.challengesSurvived++;
+  }
+
+  SFX[isGiveUp || !isSuccess ? 'fail' : 'growthSuccess']();
 
   progressTrackEl.classList.remove('growth-success', 'growth-fail');
   void progressTrackEl.offsetWidth;
@@ -599,7 +733,7 @@ function runAction(key) {
   const detailText = isGiveUp
     ? `Progress regressed ${Math.abs(cfg.reward)} points.`
     : isSuccess
-      ? (cfg.reward > 0 ? `+${cfg.reward} growth points.` : 'You held steady — no growth gained or lost.')
+      ? (delta > 0 ? `+${delta} growth points.${activeEvent && cfg.type === 'task' ? ' (event bonus applied)' : ''}` : 'You held steady — no growth gained or lost.')
       : `Failed — -${cfg.failPenalty} growth points.`;
 
   showResultPopup({
@@ -740,11 +874,13 @@ el('confirmPhotoUploadBtn').addEventListener('click', () => {
   state.faithCompletions[key] = true;
   state.faithPoints += fp;
   if (growth > 0) applyGrowth(growth);
+  if (faith === 'gospel') state.gospelShareCount++;
 
   el('photoUploadModal').hidden = true;
   pendingFaithBtn = null;
   pendingPhotoDataUrl = null;
 
+  SFX.fpGain();
   showToast(
     growth > 0
       ? `+${fp} FP and +${growth} growth — thank you for sharing your faith today.`
@@ -792,7 +928,10 @@ el('claimTodayBtn').addEventListener('click', () => {
   state.dailyLogin.claimedDays.push(day);
   state.dailyLogin.lastClaimDate = getDateKey();
   state.dailyLogin.streakDay = isFinalDay ? 1 : day + 1;
-  if (isFinalDay) state.dailyLogin.claimedDays = [];
+  if (isFinalDay) {
+    state.dailyLogin.claimedDays = [];
+    state.loginCyclesCompleted++;
+  }
 
   showToast(
     isFinalDay
@@ -846,6 +985,7 @@ let seedChoiceContext = 'onboarding'; // 'onboarding' | 'reset' | 'profile'
 
 function selectSeedType(key) {
   state.seedType = key;
+  if (!state.seedTypesTried.includes(key)) state.seedTypesTried.push(key);
   applySeedTypePalette();
   renderSeedTypeGrid();
   saveState();
@@ -872,10 +1012,39 @@ function selectSeedType(key) {
 
 /* ---------------- Ranking (sample local leaderboard) ---------------- */
 const MOCK_RANKING_NAMES = ['Grace M.', 'Daniel T.', 'Hannah R.', 'Samuel B.', 'Naomi C.'];
+const MOCK_TEAM_BATTLE = [
+  { team: 'Rooted',        fruit: 34 },
+  { team: 'Branching Out', fruit: 41 },
+  { team: 'Fruitbearers',  fruit: 27 }
+];
+
+let rankingView = 'individual'; // 'individual' | 'team'
+
+el('rankingIndividualBtn').addEventListener('click', () => {
+  rankingView = 'individual';
+  renderRanking();
+});
+el('rankingTeamBtn').addEventListener('click', () => {
+  rankingView = 'team';
+  renderRanking();
+});
 
 function renderRanking() {
-  // Regenerated each time the tab opens — sample data only, not persisted,
-  // just enough to show what a leaderboard layout would look like.
+  el('rankingIndividualBtn').classList.toggle('active', rankingView === 'individual');
+  el('rankingTeamBtn').classList.toggle('active', rankingView === 'team');
+  el('individualRankingPanel').hidden = rankingView !== 'individual';
+  el('teamRankingPanel').hidden = rankingView !== 'team';
+
+  if (rankingView === 'individual') {
+    renderIndividualRanking();
+  } else {
+    renderTeamRoster();
+    renderTeamFeed();
+    renderTeamBattle();
+  }
+}
+
+function renderIndividualRanking() {
   const mockScores = MOCK_RANKING_NAMES.map(name => ({
     name,
     fp: Math.floor(Math.random() * 600) + 50
@@ -891,6 +1060,141 @@ function renderRanking() {
     </div>
   `).join('');
 }
+
+function renderTeamRoster() {
+  el('teamRosterList').innerHTML = CONFIG.teamRoster.map(m => `
+    <div class="team-member-row">
+      <span class="team-member-name">${m.name}</span>
+      <span class="team-member-meta">${m.stage} · 🔥${m.streak}</span>
+    </div>
+  `).join('');
+}
+
+function renderTeamFeed() {
+  el('teamFeedList').innerHTML = CONFIG.teamFeedSeed.map((item, i) => {
+    const reactions = state.teamFeedReactions[i] || {};
+    return `
+      <div class="team-feed-item">
+        <div class="team-feed-text">${item.icon} <strong>${item.name}</strong> ${item.action}</div>
+        <div class="team-feed-reactions">
+          ${['🔥', '🙏', '👏'].map(emoji => `
+            <button class="reaction-btn" data-feed-index="${i}" data-emoji="${emoji}">
+              ${emoji} <span>${reactions[emoji] || 0}</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelectorAll('.reaction-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.dataset.feedIndex;
+      const emoji = btn.dataset.emoji;
+      if (!state.teamFeedReactions[idx]) state.teamFeedReactions[idx] = {};
+      state.teamFeedReactions[idx][emoji] = (state.teamFeedReactions[idx][emoji] || 0) + 1;
+      SFX.tap();
+      saveState();
+      renderTeamFeed();
+    });
+  });
+}
+
+function renderTeamBattle() {
+  const yourTeamFruit = MOCK_TEAM_BATTLE[0].fruit + state.fruitCount; // "Rooted" is your team
+  const rows = [
+    { team: 'Rooted', fruit: yourTeamFruit, isYours: true },
+    ...MOCK_TEAM_BATTLE.slice(1)
+  ].sort((a, b) => b.fruit - a.fruit);
+
+  el('teamBattleList').innerHTML = rows.map((r, i) => `
+    <div class="ranking-row ${r.isYours ? 'is-you' : ''}">
+      <span class="ranking-rank">#${i + 1}</span>
+      <span class="ranking-name">${r.team}${r.isYours ? ' (You)' : ''}</span>
+      <span class="ranking-fp">🍎 ${r.fruit}</span>
+    </div>
+  `).join('');
+}
+
+/* ---------------- Seasonal / limited-time events ---------------- */
+function getActiveEvent() {
+  const today = getDateKey();
+  return CONFIG.events.find(e => today >= e.start && today <= e.end) || null;
+}
+
+function renderEventBanner() {
+  const banner = el('eventBanner');
+  const activeEvent = getActiveEvent();
+  if (!activeEvent) {
+    banner.hidden = true;
+    return;
+  }
+  banner.hidden = false;
+  banner.innerHTML = `<strong>${activeEvent.label}</strong><br>${activeEvent.description}`;
+}
+
+/* ---------------- Badges / achievements ---------------- */
+function checkBadges() {
+  let newlyUnlocked = null;
+  CONFIG.badges.forEach(b => {
+    if (!state.badges[b.id] && b.check(state)) {
+      state.badges[b.id] = true;
+      newlyUnlocked = b;
+    }
+  });
+  if (newlyUnlocked) {
+    SFX.badge();
+    showToast(`🏅 Badge unlocked: ${newlyUnlocked.label}!`, 'success');
+    if (!state.unlockedBadgeIcon) {
+      state.unlockedBadgeIcon = newlyUnlocked.icon;
+    }
+  }
+  renderBadges();
+}
+
+function renderBadges() {
+  const grid = el('badgeGrid');
+  if (!grid) return;
+  grid.innerHTML = CONFIG.badges.map(b => {
+    const unlocked = !!state.badges[b.id];
+    return `
+      <button class="badge-tile ${unlocked ? 'unlocked' : 'locked'}" data-badge-icon="${b.icon}" ${unlocked ? '' : 'disabled'} title="${b.desc}">
+        <span class="badge-icon">${unlocked ? b.icon : '🔒'}</span>
+        <span class="badge-label">${b.label}</span>
+      </button>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.badge-tile.unlocked').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.unlockedBadgeIcon = btn.dataset.badgeIcon;
+      renderTreeNameDisplay();
+      saveState();
+      showToast('Sticker set next to your tree name!', 'info');
+    });
+  });
+}
+
+/* ---------------- Personalization: name your tree ---------------- */
+function renderTreeNameDisplay() {
+  const displayEl = el('treeNameDisplay');
+  const sticker = state.unlockedBadgeIcon ? `${state.unlockedBadgeIcon} ` : '';
+  displayEl.textContent = state.treeName ? `${sticker}${state.treeName}` : `${sticker}Growing Seed`;
+}
+
+el('treeNameInput').addEventListener('change', () => {
+  state.treeName = el('treeNameInput').value.slice(0, 24);
+  renderTreeNameDisplay();
+  saveState();
+  showToast('Tree name saved.', 'success');
+});
+
+/* ---------------- Sound toggle ---------------- */
+el('soundToggle').addEventListener('change', () => {
+  state.soundEnabled = el('soundToggle').checked;
+  saveState();
+  if (state.soundEnabled) SFX.tap();
+});
 
 /* ---------------- Test tools ---------------- */
 el('addTestFpBtn').addEventListener('click', () => {
@@ -978,6 +1282,9 @@ function celebrateFirstFruit() {
 applySeedTypePalette();
 renderVerseOfDay();
 renderSeedTypeGrid();
+el('treeNameInput').value = state.treeName || '';
+el('soundToggle').checked = state.soundEnabled;
+renderRanking();
 render({ persist: false });
 
 if (!state.hasChosenSeedType) {

@@ -13,7 +13,7 @@
 <div class="app-shell">
 
   <header class="app-header">
-    <h1>🌱 Growing Seed</h1>
+    <h1 id="treeNameDisplay">🌱 Growing Seed</h1>
     <p>Gameplay sandbox — no login required, progress saves locally in this browser.</p>
     <div class="stats-row">
       <div class="pill">⭐ <span id="fpValue">0</span> FP</div>
@@ -23,6 +23,9 @@
   </header>
 
   <div class="tab-panel" data-tab="home">
+
+  <!-- Seasonal event banner (hidden unless an event is active) -->
+  <div class="event-banner" id="eventBanner" hidden></div>
 
   <!-- Daily Reward -->
   <section class="card">
@@ -295,7 +298,7 @@
 
     <p class="stage-name" id="stageName">Seed</p>
     <div class="progress-track" id="progressTrack"><div class="progress-fill" id="progressFill"></div></div>
-    <p class="progress-text" id="progressText">0 / 50 to Germination</p>
+    <p class="progress-text" id="progressText">0 / 75 to Germination</p>
     <p class="tap-hint">🌿 Tap your tree to tend to it</p>
   </section>
 
@@ -336,8 +339,26 @@
 
   <section class="card">
     <div class="card-head"><h3>🏆 Leaderboard</h3></div>
-    <p class="card-sub">Sample local leaderboard — for demonstration only.</p>
-    <div id="rankingList"></div>
+    <div class="ranking-view-toggle">
+      <button class="chip active" id="rankingIndividualBtn">Individual</button>
+      <button class="chip" id="rankingTeamBtn">My Team</button>
+    </div>
+
+    <div id="individualRankingPanel">
+      <p class="card-sub">Sample local leaderboard — for demonstration only.</p>
+      <div id="rankingList"></div>
+    </div>
+
+    <div id="teamRankingPanel" hidden>
+      <h4 class="analytics-subhead">Your team</h4>
+      <div id="teamRosterList"></div>
+
+      <h4 class="analytics-subhead">Team feed</h4>
+      <div id="teamFeedList"></div>
+
+      <h4 class="analytics-subhead">🏆 Weekly team battle (by fruit)</h4>
+      <div id="teamBattleList"></div>
+    </div>
   </section>
 
   </div><!-- /tab-ranking -->
@@ -351,6 +372,30 @@
       <div class="u-stat"><span class="n" id="profileStreak">1</span><span class="l">Streak</span></div>
       <div class="u-stat"><span class="n" id="profileFruit">0</span><span class="l">Fruit</span></div>
     </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h3>🌳 Name Your Tree</h3></div>
+    <input type="text" id="treeNameInput" class="admin-search" placeholder="Give your tree a name…" maxlength="24" />
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h3>🏅 Badges</h3>
+    </div>
+    <p class="card-sub">Tap an unlocked badge to show it next to your tree's name.</p>
+    <div class="badge-grid" id="badgeGrid"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h3>🔊 Sound &amp; Haptics</h3>
+      <label class="sound-switch">
+        <input type="checkbox" id="soundToggle" checked />
+        <span class="sound-switch-track"></span>
+      </label>
+    </div>
+    <p class="card-sub">Toggles chimes and vibration feedback for actions, growth, and badges.</p>
   </section>
 
   <section class="card">

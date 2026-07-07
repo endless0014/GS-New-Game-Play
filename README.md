@@ -2,6 +2,52 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
+## Six engagement features for youth (latest update)
+
+All six suggestions built and tested end-to-end (details below). One honest note on process: I initially wrote all the JavaScript logic before wiring up the matching HTML elements, which meant the game briefly threw a runtime error (`Cannot read properties of null`) since the JS referenced elements that didn't exist yet. Caught this immediately with a headless-browser load check before going further, then finished the HTML/CSS and retested — worth mentioning since it's exactly the kind of thing that's easy to miss without testing.
+
+**1. My Team (in-game, not just admin)**
+- New "My Team" view in the Ranking tab (toggle between "Individual" and "My Team")
+- Shows your team roster (name, stage, streak), a **team activity feed** with tap-only reactions (🔥 🙏 👏 — no comments, keeps it simple and safe for youth), and a **weekly team-vs-team battle** ranked by fruit collected
+- Reactions persist across reloads (verified)
+
+**2. Sound + haptic feedback**
+- Built with the Web Audio API — no sound files, works fully offline. Distinct tones for: button tap, FP gain, growth success, stage-up (plus haptic buzz), fruit gained (plus haptic buzz), a failed challenge, and badge unlocks
+- One toggle in Profile controls both sound and vibration
+- Verified the toggle actually flips state and that sounds fire on the right events
+
+**3. Badges / achievements**
+- 7 badges: 7-Day Streak, First Fruit, Basketful (5 fruit), Full Bloom (Old Tree), Every Seed (try all 5 seed types), Steadfast (survive 10 challenges), Voice of Faith (share the Gospel 5 times)
+- Checked automatically after every game action; unlocking one plays a sound + shows a toast
+- Tap any unlocked badge to pin its icon next to your tree's name in the header
+
+**4. Team vs. team competition (weekly)**
+- Part of the "My Team" ranking view — three sample teams ranked by fruit collected this week, your team's total updates live as you collect fruit
+
+**5. Seasonal / limited-time events**
+- A `CONFIG.events` list with start/end dates — an active event shows a banner on Home and applies a growth bonus (currently a sample "🌟 Growth Sprint Week," +25% growth from tending, July 1–14) automatically while it's running
+- Verified the bonus actually applies: a base +20 Water action correctly became +25 during the event window, and the result popup notes "(event bonus applied)"
+- Adding a new seasonal event later is just one more entry in that list — nothing else needs to change
+
+**6. Personalization**
+- Name your tree (shows in the header, replacing "Growing Seed")
+- Unlocked badges can be pinned as a small sticker next to that name
+
+## FP economy & growth curve: checked and rebalanced against a 1-month arc
+
+Ran a Monte Carlo simulation (500 runs) of a consistent daily player — logging in every day, doing all daily/weekly Faith Activities, and tending the tree whenever they had FP — against the actual game numbers.
+
+**What the original numbers produced:** full bloom (Old Tree) reached by **day ~16 on average**, with **17 fruit already collected by day 30**. A consistent player finished the entire growth arc in about half a month, leaving the back half of the month as idle fruit-farming with nothing new to reach for.
+
+**The fix:** scaled all seven stage thresholds by 1.5× (Seed 0 · Germination 75 · Seedling 225 · Sapling 525 · Young Tree 900 · Mature Tree 1500 · Old Tree 2250) — no cost, reward, or FP-income numbers changed, only the distance to travel.
+
+**Result, re-verified against both the simulation and the actual game code:**
+- A consistent daily player now reaches Old Tree around **day 21–25** (the exact day varies with random Challenge interruptions and Fight's 70/30 odds), with the first fruit shortly after and roughly **7–11 fruit banked by day 30** — a satisfying "reached full bloom and started the harvest" arc that uses the whole month rather than half of it.
+- A casual player who misses ~30% of days lands mostly at Mature Tree/Young Tree by day 30, with only ~10% reaching Old Tree in-month — meaning consistency is meaningfully rewarded without punishing casual players into stalling at Seed/Germination.
+- Verified stage-by-stage that every threshold boundary (75/225/525/900/1500/2250) correctly triggers the right stage name in the actual running game.
+
+If you'd like the pacing tuned further (e.g., faster/slower, or specifically tuned around your actual expected daily-active-user FP income rather than this simulation's assumptions), the thresholds are the only numbers that need touching — `CONFIG.stages` and `CONFIG.fullBloomThreshold` in `script.js`.
+
 ## What's in scope
 
 - Seed → Old Tree progression (7 stages)
@@ -78,33 +124,6 @@ This same layered-shading + idle-motion approach can be extended to the other si
 - **Sample Leaderboard** (Ranking tab) — mock local data plus your real current FP, sorted together, to preview the layout.
 
 All of this was tested end-to-end in a headless browser: tab switching, the photo-upload gate (confirm button disabled until a photo is attached), Share the Gospel's dual FP+growth reward, tree species retinting the live canopy, and the challenge popup rendering its verse — zero console errors.
-
-## Role-based permissions, teams, and gameplay rebalance (newest update)
-
-**1. Admin Dashboard: 4-tier permission matrix + Teams**
-- **Admin**: every action available — add FP, View, Open UI, Reset Password, Delete, Reset Progress, and changing anyone's role.
-- **Moderator**: everything the same *except* Reset Progress and changing roles — both are visibly disabled with a tooltip explaining why, confirmed by testing (both correctly locked when previewing as Moderator, both correctly enabled as Admin).
-- **Team Leader**: a completely different view — their own team roster with a **🔔 Remind** button per member (simulated notification), plus a **Pending Join Requests** list with Approve/Decline. A "Specifically, you are: [name]" selector lets you simulate being any of the leaders in the mock data.
-- **User**: a **Join a Team** view listing every Leader with a **Request to Join** button. Once requested, it shows "Requested ⏳" until the Leader approves; once approved, it shows "✓ On this team" with a **Leave Team** option. Also simulatable via a "Specifically, you are: [name]" selector.
-- All four views tested end-to-end: promoting/approving/declining/leaving/requesting all update state correctly and re-render immediately.
-- Also added: a **Deleted Players** section (Admin/Moderator only) so **Delete** isn't destructive — deleted players can be **Restored** — plus a read-only **View** modal for player details.
-
-**2. Task scheduling rules**
-- **Worship Attendance** can now only be logged on Sundays — locked the rest of the week with a note explaining why, verified by faking the browser's day-of-week in testing.
-- **Small Group** stays once-per-week (already correct from before). **Prayer, Bible Reading, Devotion** stay daily (already correct).
-- **Share the Gospel** is now hidden entirely until your tree reaches **Young Tree** stage — verified hidden at Seed, confirmed it appears once grown to Young Tree.
-
-**3. Removed "Upgrade Roots (10 FP)"** — gameplay tending (Water/Prune/Fertilize) is now the only way to grow the tree.
-
-**4. Tend Your Tree is now a required sequence, not a menu**
-- Water → Prune → Fertilize, in that order — attempting a step out of order is blocked with a toast telling you what to do first (e.g. "Do Water first").
-- All three now cost the same **10 FP** each, instead of three different costs.
-- "Protect" was renamed to **Prune** (✂️) — a clearer, tending-specific word — with its own distinct animation (a quick double-pulse "snip" plus a couple of falling clippings), separate from Endure's shield-pulse.
-- After Fertilize, the sequence loops back to Water so the cycle can repeat.
-
-**5. Challenge rebalance: Endure is now truly passive**
-- Endure previously handed out a free +15 growth for zero risk, quietly making it the best option in the game with none of the tension "enduring" should carry.
-- Endure now costs its FP but grants **0 growth** — a true, no-gain-no-loss pass-through — leaving Fight (70%/30% risk) and Give Up (guaranteed regression) as the two mechanics with real consequences.
 
 ## Admin Dashboard: analytics + 4-tier roles (latest update)
 
