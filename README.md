@@ -2,6 +2,12 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
+## Profile restructure + explicit Save buttons + Reset Tree cost (latest update)
+
+1. **Explicit Save buttons everywhere** — Profile Name, Email, and Tree Name no longer rely on a hidden `change`-on-blur event with no visible confirmation moment. Each field now has its own **Save** button that only commits and locks on click.
+2. **Profile tab restructured** — removed the redundant "Your Progress" stats card (FP/Streak/Fruit were already visible in the header on every screen). In its place, a proper **Profile card**: Name, Email, and **Date Joined** (captured automatically the first time the sandbox ever loads in that browser).
+3. **Reset Tree now costs 1000 FP** — verified both directions: blocked with a clear "costs 1000 FP — you have X" toast when short, and correctly deducts exactly 1000 FP and proceeds when affordable.
+
 ## Six engagement features for youth (latest update)
 
 All six suggestions built and tested end-to-end (details below). One honest note on process: I initially wrote all the JavaScript logic before wiring up the matching HTML elements, which meant the game briefly threw a runtime error (`Cannot read properties of null`) since the JS referenced elements that didn't exist yet. Caught this immediately with a headless-browser load check before going further, then finished the HTML/CSS and retested — worth mentioning since it's exactly the kind of thing that's easy to miss without testing.

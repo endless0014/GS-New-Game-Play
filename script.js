@@ -252,6 +252,8 @@ function defaultState() {
     treeNameLocked: false,   // locks after first set; unlocks again only on tree reset
     profileName: '',
     profileNameEditsUsed: 0, // 0 = never set; after first set, exactly 1 more edit allowed, then locked
+    profileEmail: '',
+    dateJoined: getDateKey(), // captured once, the first time this browser ever loads the sandbox
     soundEnabled: true,
     unlockedBadgeIcon: null, // which badge icon is shown next to the tree name
     badges: {},              // key: badgeId -> true once unlocked
@@ -392,11 +394,6 @@ function render(options = {}) {
 
   const completedDays = state.dailyLogin.claimedDays.length;
   streakValueEl.textContent = completedDays > 0 ? completedDays : 1;
-
-  // Mirror the same stats into the Profile tab
-  el('profileFp').textContent = Math.floor(state.faithPoints);
-  el('profileStreak').textContent = completedDays > 0 ? completedDays : 1;
-  el('profileFruit').textContent = state.fruitCount;
 
   renderStage();
   renderFruits();
@@ -1190,6 +1187,7 @@ function renderNameLocks() {
   const treeInput = el('treeNameInput');
   const treeHint = el('treeNameHint');
   treeInput.disabled = state.treeNameLocked;
+  el('saveTreeNameBtn').disabled = state.treeNameLocked;
   treeHint.textContent = state.treeNameLocked
     ? '🔒 Locked — reset your tree to rename it.'
     : 'You can set this once — choose carefully!';
@@ -1199,6 +1197,7 @@ function renderNameLocks() {
   const profileHint = el('profileNameHint');
   const locked = state.profileNameEditsUsed >= 1 && !!state.profileName;
   profileInput.disabled = locked;
+  el('saveProfileNameBtn').disabled = locked;
   if (!state.profileName) {
     profileHint.textContent = 'Set your name once — you\'ll get one chance to change it later.';
   } else if (!locked) {
@@ -1208,10 +1207,15 @@ function renderNameLocks() {
   }
 }
 
-el('treeNameInput').addEventListener('change', () => {
+function renderDateJoined() {
+  const d = new Date(state.dateJoined + 'T00:00:00');
+  el('dateJoinedValue').textContent = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+el('saveTreeNameBtn').addEventListener('click', () => {
   if (state.treeNameLocked) return; // extra guard beyond the disabled attribute
   const value = el('treeNameInput').value.trim().slice(0, 24);
-  if (!value) return;
+  if (!value) { showToast('Enter a name first.', 'warning'); return; }
   state.treeName = value;
   state.treeNameLocked = true;
   renderTreeNameDisplay();
@@ -1220,9 +1224,9 @@ el('treeNameInput').addEventListener('change', () => {
   showToast('Tree name saved and locked. Reset your tree to rename it.', 'success');
 });
 
-el('profileNameInput').addEventListener('change', () => {
+el('saveProfileNameBtn').addEventListener('click', () => {
   const value = el('profileNameInput').value.trim().slice(0, 24);
-  if (!value) return;
+  if (!value) { showToast('Enter a name first.', 'warning'); return; }
   const isFirstSet = !state.profileName;
   if (!isFirstSet) {
     if (state.profileNameEditsUsed >= 1) return; // already used the one allowed change
@@ -1232,6 +1236,13 @@ el('profileNameInput').addEventListener('change', () => {
   renderNameLocks();
   saveState();
   showToast(isFirstSet ? 'Profile name saved.' : 'Profile name changed — that was your one allowed change.', 'success');
+});
+
+el('saveProfileEmailBtn').addEventListener('click', () => {
+  const value = el('profileEmailInput').value.trim();
+  state.profileEmail = value;
+  saveState();
+  showToast('Email saved.', 'success');
 });
 
 /* ---------------- Sound toggle ---------------- */
@@ -1249,7 +1260,13 @@ el('addTestFpBtn').addEventListener('click', () => {
 });
 
 el('resetTreeBtn').addEventListener('click', () => {
-  if (!confirm('Reset your tree\'s growth and choose a new seed to grow? Your FP and streak stay as they are.')) return;
+  const RESET_COST = 1000;
+  if (state.faithPoints < RESET_COST) {
+    showToast(`Resetting your tree costs ${RESET_COST} FP — you have ${Math.floor(state.faithPoints)}.`, 'warning');
+    return;
+  }
+  if (!confirm(`Reset your tree's growth for ${RESET_COST} FP and choose a new seed to grow? Your streak stays as it is.`)) return;
+  state.faithPoints -= RESET_COST;
   state.treeProgress = 0;
   state.maxBloomReached = false;
   state.fruitCount = 0;
@@ -1263,7 +1280,7 @@ el('resetTreeBtn').addEventListener('click', () => {
   renderNameLocks();
   seedChoiceContext = 'reset';
   el('seedChoiceModal').hidden = false;
-  showToast('Your tree has been reset. You can rename it now.', 'info');
+  showToast(`Tree reset for ${RESET_COST} FP. You can rename it now.`, 'info');
 });
 
 el('resetProgressBtn').addEventListener('click', () => {
@@ -1331,6 +1348,8 @@ renderVerseOfDay();
 renderSeedTypeGrid();
 el('treeNameInput').value = state.treeName || '';
 el('profileNameInput').value = state.profileName || '';
+el('profileEmailInput').value = state.profileEmail || '';
+renderDateJoined();
 renderNameLocks();
 el('soundToggle').checked = state.soundEnabled;
 renderRanking();

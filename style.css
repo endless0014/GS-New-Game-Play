@@ -796,6 +796,36 @@ button {
 .ranking-fp { font-weight: 800; color: var(--accent-strong); font-size: 0.88rem; }
 
 /* ---------------- Name lock hints ---------------- */
+.field-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 0.3rem;
+}
+
+.field-with-button {
+  display: flex;
+  gap: 0.5rem;
+}
+.field-with-button input { flex: 1; min-width: 0; }
+.field-with-button .btn {
+  padding: 0.6rem 1rem;
+  font-size: 0.84rem;
+  flex-shrink: 0;
+}
+.field-with-button .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.date-joined-value {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
 .lock-hint {
   font-size: 0.76rem;
   color: var(--text-muted);
