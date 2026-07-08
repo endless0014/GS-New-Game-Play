@@ -2,6 +2,17 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
+## Ranking economy fix + real Team create/join flow (latest update)
+
+1. **FP for ranking is now lifetime-earned, not current spendable balance.** Previously ranking used `state.faithPoints` directly — since that number drops every time you tend your tree or resolve a challenge, an active/engaged player could rank *below* someone who just hoarded FP and never played. Added `state.totalFpEarned`, a cumulative counter that only goes up, routed through a single `earnFp()` helper used by every real FP source (daily login, Faith Activities, Share the Gospel). The test-only "+100 FP" button deliberately does **not** count toward it, so testing doesn't inflate your rank.
+2. **Ranking now shows both FP and Tree Progress** per row, not just FP.
+3. **Fixed a regressed bug**: the Endure button in the actual live Challenge popup had reverted back to showing "+15" (stale from before the passive-hold rebalance) during an earlier unrelated HTML restructure. Now correctly shows "+0 growth" and matches the result message.
+4. **Built a real Create/Join Team flow** in the game itself (Ranking tab → My Team), since previously "My Team" only showed fixed sample data with no way to actually join or create one:
+   - **Create a Team** costs 500 FP, prompts for a team name, and makes you its leader
+   - **Join a Team** lists sample existing teams, free to join
+   - **Leave Team** returns you to the no-team state, where you can create or join again
+   - Verified end-to-end: blocked with a clear message when short on FP, deducts exactly 500 FP on success, leader tag shows correctly, and leaving/rejoining both work.
+
 ## Profile restructure + explicit Save buttons + Reset Tree cost (latest update)
 
 1. **Explicit Save buttons everywhere** — Profile Name, Email, and Tree Name no longer rely on a hidden `change`-on-blur event with no visible confirmation moment. Each field now has its own **Save** button that only commits and locks on click.

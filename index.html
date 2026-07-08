@@ -350,14 +350,29 @@
     </div>
 
     <div id="teamRankingPanel" hidden>
-      <h4 class="analytics-subhead">Your team</h4>
-      <div id="teamRosterList"></div>
+      <div id="noTeamPanel">
+        <p class="card-sub">You're not on a team yet. Create your own or join one below.</p>
+        <button class="btn" id="createTeamOpenBtn" style="width:100%;">🏗️ Create a Team (500 FP)</button>
 
-      <h4 class="analytics-subhead">Team feed</h4>
-      <div id="teamFeedList"></div>
+        <h4 class="analytics-subhead">Join an existing team</h4>
+        <div id="joinableTeamsList"></div>
+      </div>
 
-      <h4 class="analytics-subhead">🏆 Weekly team battle (by fruit)</h4>
-      <div id="teamBattleList"></div>
+      <div id="hasTeamPanel" hidden>
+        <div class="my-team-header">
+          <span id="myTeamName">—</span>
+          <button class="btn secondary" id="leaveTeamBtn2">Leave Team</button>
+        </div>
+
+        <h4 class="analytics-subhead">Your team</h4>
+        <div id="teamRosterList"></div>
+
+        <h4 class="analytics-subhead">Team feed</h4>
+        <div id="teamFeedList"></div>
+
+        <h4 class="analytics-subhead">🏆 Weekly team battle (by fruit)</h4>
+        <div id="teamBattleList"></div>
+      </div>
     </div>
   </section>
 
@@ -500,7 +515,7 @@
       </button>
       <button class="action-btn" data-action="endure" id="endureBtn">
         <span class="icon">🛡️</span><span class="name">Endure</span>
-        <span class="meta">5 FP · Guaranteed · +15</span>
+        <span class="meta">5 FP · Safe · +0 growth</span>
       </button>
       <button class="action-btn" data-action="giveup" id="giveUpBtn">
         <span class="icon">🍂</span><span class="name">Give Up</span>
@@ -526,6 +541,17 @@
 
     <button class="btn" id="confirmPhotoUploadBtn" style="width:100%;margin-top:0.9rem;" disabled>Claim Reward</button>
     <button class="btn secondary" id="cancelPhotoUploadBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
+<!-- Create Team modal -->
+<div class="modal" id="createTeamModal" hidden>
+  <div class="modal-content">
+    <h2>🏗️ Create a Team</h2>
+    <p class="card-sub">This costs <strong>500 FP</strong> and makes you the team's leader. Choose a name your team members will see.</p>
+    <input type="text" id="createTeamNameInput" class="admin-search" placeholder="Team name…" maxlength="24" />
+    <button class="btn" id="confirmCreateTeamBtn" style="width:100%;margin-top:0.9rem;">Create Team (500 FP)</button>
+    <button class="btn secondary" id="cancelCreateTeamBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
   </div>
 </div>
 

@@ -235,6 +235,7 @@ let state = loadState();
 function defaultState() {
   return {
     faithPoints: 20,
+    totalFpEarned: 20, // cumulative lifetime FP earned — used for ranking, never decreases when spent
     treeProgress: 0,
     maxBloomReached: false,
     fruitCount: 0,
@@ -261,7 +262,8 @@ function defaultState() {
     challengesSurvived: 0,   // Fight/Endure resolved (not Give Up)
     gospelShareCount: 0,
     loginCyclesCompleted: 0, // incremented each time a 7-day login cycle finishes
-    teamFeedReactions: {}    // key: feed item index -> { emoji: count }
+    teamFeedReactions: {},   // key: feed item index -> { emoji: count }
+    team: null               // null | { name: string, isOwner: boolean }
   };
 }
 
@@ -298,6 +300,16 @@ function periodKeyFor(unit) {
    fruit generation is never bypassed. This directly fixes the
    original bug where handleActionButton() mutated treeProgress
    directly and silently skipped fruit logic. */
+// Every source of FP income MUST go through this function so ranking can
+// use lifetime-earned FP (which never goes down when you spend it) rather
+// than the current spendable balance (which drops every time you tend the
+// tree or resolve a challenge). Ranking on spendable balance would unfairly
+// rank an active, spending player below someone who just hoards FP.
+function earnFp(amount) {
+  state.faithPoints += amount;
+  state.totalFpEarned += amount;
+}
+
 function applyGrowth(pointsToAdd) {
   const previous = state.treeProgress;
   state.treeProgress = Math.max(0, state.treeProgress + pointsToAdd);
@@ -872,7 +884,7 @@ el('confirmPhotoUploadBtn').addEventListener('click', () => {
   const key = `${faith}:${periodKeyFor(unit)}`;
 
   state.faithCompletions[key] = true;
-  state.faithPoints += fp;
+  earnFp(fp);
   if (growth > 0) applyGrowth(growth);
   if (faith === 'gospel') state.gospelShareCount++;
 
@@ -924,7 +936,7 @@ el('claimTodayBtn').addEventListener('click', () => {
   const reward = CONFIG.dailyLoginRewards[day - 1] || 0;
   const isFinalDay = day >= CONFIG.dailyLoginRewards.length;
 
-  state.faithPoints += reward + (isFinalDay ? CONFIG.dailyLoginCompletionBonus : 0);
+  earnFp(reward + (isFinalDay ? CONFIG.dailyLoginCompletionBonus : 0));
   state.dailyLogin.claimedDays.push(day);
   state.dailyLogin.lastClaimDate = getDateKey();
   state.dailyLogin.streakDay = isFinalDay ? 1 : day + 1;
@@ -1038,25 +1050,95 @@ function renderRanking() {
   if (rankingView === 'individual') {
     renderIndividualRanking();
   } else {
+    renderTeamPanel();
+  }
+}
+
+const JOINABLE_TEAMS = ['Branching Out', 'Fruitbearers', 'The Vineyard'];
+
+function renderTeamPanel() {
+  const hasTeam = !!state.team;
+  el('noTeamPanel').hidden = hasTeam;
+  el('hasTeamPanel').hidden = !hasTeam;
+
+  if (hasTeam) {
+    el('myTeamName').textContent = `🌳 ${state.team.name}${state.team.isOwner ? ' (Leader)' : ''}`;
     renderTeamRoster();
     renderTeamFeed();
     renderTeamBattle();
+  } else {
+    el('joinableTeamsList').innerHTML = JOINABLE_TEAMS.map(name => `
+      <div class="team-member-row">
+        <span class="team-member-name">🌳 ${name}</span>
+        <button class="btn secondary" id="join-team-${name.replace(/\s+/g, '-')}" style="padding:0.4rem 0.8rem;font-size:0.78rem;">Join</button>
+      </div>
+    `).join('');
+    JOINABLE_TEAMS.forEach(name => {
+      const btnId = `join-team-${name.replace(/\s+/g, '-')}`;
+      el(btnId).addEventListener('click', () => {
+        state.team = { name, isOwner: false };
+        SFX.tap();
+        showToast(`You joined ${name}!`, 'success');
+        saveState();
+        renderRanking();
+      });
+    });
   }
 }
+
+el('createTeamOpenBtn').addEventListener('click', () => {
+  el('createTeamNameInput').value = '';
+  el('createTeamModal').hidden = false;
+});
+el('cancelCreateTeamBtn').addEventListener('click', () => { el('createTeamModal').hidden = true; });
+
+el('confirmCreateTeamBtn').addEventListener('click', () => {
+  const TEAM_COST = 500;
+  const name = el('createTeamNameInput').value.trim().slice(0, 24);
+  if (!name) { showToast('Give your team a name first.', 'warning'); return; }
+  if (state.faithPoints < TEAM_COST) {
+    showToast(`Creating a team costs ${TEAM_COST} FP — you have ${Math.floor(state.faithPoints)}.`, 'warning');
+    return;
+  }
+  state.faithPoints -= TEAM_COST;
+  state.team = { name, isOwner: true };
+  el('createTeamModal').hidden = true;
+  SFX.badge();
+  showToast(`${name} created for ${TEAM_COST} FP! You're the team leader now.`, 'success');
+  render();
+  renderRanking();
+});
+
+el('leaveTeamBtn2').addEventListener('click', () => {
+  if (!confirm(`Leave ${state.team.name}? ${state.team.isOwner ? 'As the creator, you can recreate a new team later for another 500 FP.' : ''}`)) return;
+  state.team = null;
+  saveState();
+  renderRanking();
+  showToast('You left the team.', 'info');
+});
 
 function renderIndividualRanking() {
   const mockScores = MOCK_RANKING_NAMES.map(name => ({
     name,
-    fp: Math.floor(Math.random() * 600) + 50
+    fp: Math.floor(Math.random() * 600) + 50,
+    progress: Math.floor(Math.random() * CONFIG.fullBloomThreshold)
   }));
-  mockScores.push({ name: 'You', fp: Math.floor(state.faithPoints), isYou: true });
+  mockScores.push({
+    name: 'You',
+    fp: Math.floor(state.totalFpEarned), // lifetime earned, not current spendable balance
+    progress: Math.floor(state.treeProgress),
+    isYou: true
+  });
   mockScores.sort((a, b) => b.fp - a.fp);
 
   el('rankingList').innerHTML = mockScores.map((row, i) => `
     <div class="ranking-row ${row.isYou ? 'is-you' : ''}">
       <span class="ranking-rank">#${i + 1}</span>
       <span class="ranking-name">${row.name}</span>
-      <span class="ranking-fp">${row.fp} FP</span>
+      <span class="ranking-stats">
+        <span class="ranking-fp">⭐ ${row.fp} FP</span>
+        <span class="ranking-progress">🌱 ${row.progress}</span>
+      </span>
     </div>
   `).join('');
 }
@@ -1254,8 +1336,10 @@ el('soundToggle').addEventListener('change', () => {
 
 /* ---------------- Test tools ---------------- */
 el('addTestFpBtn').addEventListener('click', () => {
+  // Deliberately does NOT add to totalFpEarned — this is a debug convenience
+  // for testing, not real gameplay, so it shouldn't inflate the ranking stat.
   state.faithPoints += 100;
-  showToast('+100 FP added for testing.', 'info');
+  showToast('+100 FP added for testing (spendable only — does not count toward ranking).', 'info');
   render();
 });
 

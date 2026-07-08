@@ -794,6 +794,8 @@ button {
 .ranking-rank { font-weight: 800; width: 1.6rem; color: var(--text-muted); }
 .ranking-name { flex: 1; font-weight: 700; font-size: 0.88rem; }
 .ranking-fp { font-weight: 800; color: var(--accent-strong); font-size: 0.88rem; }
+.ranking-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; }
+.ranking-progress { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; }
 
 /* ---------------- Name lock hints ---------------- */
 .field-label {
@@ -918,6 +920,16 @@ button {
 }
 
 /* ---------------- Team roster / feed / battle ---------------- */
+.my-team-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--accent-strong);
+}
+
 .team-member-row {
   display: flex;
   justify-content: space-between;
