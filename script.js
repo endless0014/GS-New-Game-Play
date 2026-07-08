@@ -249,6 +249,9 @@ function defaultState() {
 
     // --- New: personalization, sound, badges, tracking ---
     treeName: '',
+    treeNameLocked: false,   // locks after first set; unlocks again only on tree reset
+    profileName: '',
+    profileNameEditsUsed: 0, // 0 = never set; after first set, exactly 1 more edit allowed, then locked
     soundEnabled: true,
     unlockedBadgeIcon: null, // which badge icon is shown next to the tree name
     badges: {},              // key: badgeId -> true once unlocked
@@ -1175,18 +1178,60 @@ function renderBadges() {
   });
 }
 
-/* ---------------- Personalization: name your tree ---------------- */
+/* ---------------- Personalization: profile name + tree name ---------------- */
 function renderTreeNameDisplay() {
   const displayEl = el('treeNameDisplay');
   const sticker = state.unlockedBadgeIcon ? `${state.unlockedBadgeIcon} ` : '';
   displayEl.textContent = state.treeName ? `${sticker}${state.treeName}` : `${sticker}Growing Seed`;
 }
 
+function renderNameLocks() {
+  // Tree name: fully locked after first set, only unlocked by resetting the tree.
+  const treeInput = el('treeNameInput');
+  const treeHint = el('treeNameHint');
+  treeInput.disabled = state.treeNameLocked;
+  treeHint.textContent = state.treeNameLocked
+    ? '🔒 Locked — reset your tree to rename it.'
+    : 'You can set this once — choose carefully!';
+
+  // Profile name: one free initial set, then exactly one more edit, then locked.
+  const profileInput = el('profileNameInput');
+  const profileHint = el('profileNameHint');
+  const locked = state.profileNameEditsUsed >= 1 && !!state.profileName;
+  profileInput.disabled = locked;
+  if (!state.profileName) {
+    profileHint.textContent = 'Set your name once — you\'ll get one chance to change it later.';
+  } else if (!locked) {
+    profileHint.textContent = 'You have 1 more change available before this locks.';
+  } else {
+    profileHint.textContent = '🔒 Locked — you\'ve used your one allowed change.';
+  }
+}
+
 el('treeNameInput').addEventListener('change', () => {
-  state.treeName = el('treeNameInput').value.slice(0, 24);
+  if (state.treeNameLocked) return; // extra guard beyond the disabled attribute
+  const value = el('treeNameInput').value.trim().slice(0, 24);
+  if (!value) return;
+  state.treeName = value;
+  state.treeNameLocked = true;
   renderTreeNameDisplay();
+  renderNameLocks();
   saveState();
-  showToast('Tree name saved.', 'success');
+  showToast('Tree name saved and locked. Reset your tree to rename it.', 'success');
+});
+
+el('profileNameInput').addEventListener('change', () => {
+  const value = el('profileNameInput').value.trim().slice(0, 24);
+  if (!value) return;
+  const isFirstSet = !state.profileName;
+  if (!isFirstSet) {
+    if (state.profileNameEditsUsed >= 1) return; // already used the one allowed change
+    state.profileNameEditsUsed++;
+  }
+  state.profileName = value;
+  renderNameLocks();
+  saveState();
+  showToast(isFirstSet ? 'Profile name saved.' : 'Profile name changed — that was your one allowed change.', 'success');
 });
 
 /* ---------------- Sound toggle ---------------- */
@@ -1211,12 +1256,14 @@ el('resetTreeBtn').addEventListener('click', () => {
   state.pointsForFruit = 0;
   state.hasCelebratedFirstFruit = false;
   state.previousStage = null; // forces the stage-swap/background to re-run back to Seed
+  state.treeNameLocked = false; // renaming unlocks again on a fresh tree
   skipNextLevelUpCelebration = true;
   document.querySelectorAll('.tree-stage-img').forEach(elImg => elImg.classList.remove('active'));
   render();
+  renderNameLocks();
   seedChoiceContext = 'reset';
   el('seedChoiceModal').hidden = false;
-  showToast('Your tree has been reset. Choose a new seed to grow.', 'info');
+  showToast('Your tree has been reset. You can rename it now.', 'info');
 });
 
 el('resetProgressBtn').addEventListener('click', () => {
@@ -1283,6 +1330,8 @@ applySeedTypePalette();
 renderVerseOfDay();
 renderSeedTypeGrid();
 el('treeNameInput').value = state.treeName || '';
+el('profileNameInput').value = state.profileName || '';
+renderNameLocks();
 el('soundToggle').checked = state.soundEnabled;
 renderRanking();
 render({ persist: false });
