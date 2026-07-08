@@ -631,6 +631,9 @@ function switchTab(tab) {
   document.querySelectorAll('.bottom-nav-item').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
+  // The branded header (logos + FP/streak/fruit pills) is redundant on the
+  // Profile screen, which has its own identity block (name/email/date joined).
+  el('appHeader').hidden = tab === 'profile';
   if (tab === 'ranking') renderRanking();
   if (tab === 'profile') renderBadges();
 }
@@ -1261,7 +1264,12 @@ function renderBadges() {
 function renderTreeNameDisplay() {
   const displayEl = el('treeNameDisplay');
   const sticker = state.unlockedBadgeIcon ? `${state.unlockedBadgeIcon} ` : '';
-  displayEl.textContent = state.treeName ? `${sticker}${state.treeName}` : `${sticker}Growing Seed`;
+  if (state.treeName) {
+    displayEl.textContent = `${sticker}${state.treeName}`;
+    displayEl.hidden = false;
+  } else {
+    displayEl.hidden = true;
+  }
 }
 
 function renderNameLocks() {
@@ -1287,6 +1295,17 @@ function renderNameLocks() {
   } else {
     profileHint.textContent = '🔒 Locked — you\'ve used your one allowed change.';
   }
+
+  // Email: set once, then permanently locked — no edits at all, unlike
+  // profile name or tree name, which both allow at least one change.
+  const emailInput = el('profileEmailInput');
+  const emailHint = el('profileEmailHint');
+  const emailLocked = !!state.profileEmail;
+  emailInput.disabled = emailLocked;
+  el('saveProfileEmailBtn').disabled = emailLocked;
+  emailHint.textContent = emailLocked
+    ? '🔒 Locked — email cannot be changed once set.'
+    : 'Set once when you register — this cannot be changed afterward.';
 }
 
 function renderDateJoined() {
@@ -1321,10 +1340,13 @@ el('saveProfileNameBtn').addEventListener('click', () => {
 });
 
 el('saveProfileEmailBtn').addEventListener('click', () => {
+  if (state.profileEmail) return; // extra guard beyond the disabled attribute
   const value = el('profileEmailInput').value.trim();
+  if (!value) { showToast('Enter an email first.', 'warning'); return; }
   state.profileEmail = value;
+  renderNameLocks();
   saveState();
-  showToast('Email saved.', 'success');
+  showToast('Email saved and locked — this cannot be changed later.', 'success');
 });
 
 /* ---------------- Sound toggle ---------------- */

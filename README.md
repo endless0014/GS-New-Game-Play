@@ -2,6 +2,13 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
+## Branding, header cleanup, and permanent email lock (latest update)
+
+1. **Real logos in the header** — replaced the placeholder shield emoji with your actual ABCF and Pulse logos (in `assets/`), shown next to a static "Growing Seed" wordmark, matching your reference image.
+2. **Custom tree name moved out of the header** — since the header now carries your real branding, a custom tree name (e.g. "Endless") displays in the **Seed Growth card** instead, and only when one is actually set (hidden otherwise).
+3. **The branded header no longer shows on the Profile tab** — Profile has its own identity block (Name/Email/Date Joined), so repeating the big green banner there was redundant. It reappears normally on Home/Tasks/Ranking.
+4. **Email is now permanently locked after the first save** — no edits at all afterward (unlike Profile Name, which still allows exactly one change). Verified: input and Save button both disable immediately after the first save, with a clear "🔒 Locked — email cannot be changed once set" message.
+
 ## Ranking economy fix + real Team create/join flow (latest update)
 
 1. **FP for ranking is now lifetime-earned, not current spendable balance.** Previously ranking used `state.faithPoints` directly — since that number drops every time you tend your tree or resolve a challenge, an active/engaged player could rank *below* someone who just hoarded FP and never played. Added `state.totalFpEarned`, a cumulative counter that only goes up, routed through a single `earnFp()` helper used by every real FP source (daily login, Faith Activities, Share the Gospel). The test-only "+100 FP" button deliberately does **not** count toward it, so testing doesn't inflate your rank.

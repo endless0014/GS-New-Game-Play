@@ -12,8 +12,14 @@
 
 <div class="app-shell">
 
-  <header class="app-header">
-    <h1 id="treeNameDisplay">🌱 Growing Seed</h1>
+  <header class="app-header" id="appHeader">
+    <div class="brand-row">
+      <h1>🌱 Growing Seed</h1>
+      <div class="brand-logos">
+        <img src="assets/ABCF.png" alt="ABCF logo" class="brand-logo" />
+        <img src="assets/Pulse.png" alt="Pulse logo" class="brand-logo" />
+      </div>
+    </div>
     <p>Gameplay sandbox — no login required, progress saves locally in this browser.</p>
     <div class="stats-row">
       <div class="pill">⭐ <span id="fpValue">0</span> FP</div>
@@ -42,6 +48,7 @@
     <div class="card-head">
       <h3>🌱 Seed Growth</h3>
     </div>
+    <p class="tree-name-display" id="treeNameDisplay" hidden></p>
 
     <div class="tree-stage-wrap" id="treeStageWrap" role="button" tabindex="0" aria-label="Open daily tasks">
       <div class="tree-bg-layer is-front" id="bgLayerA"></div>
@@ -395,6 +402,7 @@
       <input type="email" id="profileEmailInput" class="admin-search" placeholder="you@example.com" />
       <button class="btn" id="saveProfileEmailBtn">Save</button>
     </div>
+    <p class="lock-hint" id="profileEmailHint">Set once when you register — this cannot be changed afterward.</p>
 
     <label class="field-label" style="margin-top:0.9rem;">Date Joined</label>
     <p class="date-joined-value" id="dateJoinedValue">—</p>
