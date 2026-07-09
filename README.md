@@ -2,7 +2,31 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
-## Branding, header cleanup, and permanent email lock (latest update)
+## Admin Dashboard: custom FP amounts, chart fix, Super Admin tier, manual events (latest update)
+
+**1. Custom FP amount modal** — the "+FP" button now opens a small modal with a number input (defaults to 50, but editable to anything) instead of always adding a fixed +50.
+
+**2. Fixed chart overflow with large date ranges** — picking a big range (e.g. 3+ months) previously forced bars into a fixed minimum width that pushed the chart wider than its container, so the date labels underneath got clipped by the card's rounded border. Fixed by making the bar gap scale down as the number of days grows, and by reserving proper bottom padding for labels. Verified with a 99-day range: bars now fill the container width proportionally and labels sit cleanly inside the card.
+
+**3. New Super Admin tier, with two permanently-locked accounts** — `endlesssh0014@gmail.com` and `endlessnogu@gmail.com` are seeded as Super Admin and **cannot have their role changed by anyone**, including other Super Admins — enforced both by disabling their role dropdown in the UI and with a hard guard inside `updateRole()` itself (verified this holds even when calling `updateRole()` directly from the browser console, bypassing the UI entirely). Every other Admin's role **can** be changed — but only by a Super Admin now.
+
+   **Current permission matrix** (also shown live under "Previewing as" in the dashboard):
+   | Action | Super Admin | Admin | Moderator |
+   |---|---|---|---|
+   | Add FP | ✅ | ✅ | ✅ |
+   | View player | ✅ | ✅ | ✅ |
+   | Open UI (impersonate) | ✅ | ✅ | ✅ |
+   | Reset Password | ✅ | ✅ | ✅ |
+   | Delete / Restore player | ✅ | ✅ | ✅ |
+   | Reset Progress | ✅ | ✅ | ❌ |
+   | **Change roles** | ✅ | ❌ | ❌ |
+   | **Activate/deactivate seasonal events** | ✅ | ❌ | ❌ |
+
+   Leader and User get their own separate views (My Team / Join a Team) rather than the player-management list at all.
+
+**4. Seasonal events are now Super-Admin-activated, not automatic** — "Growth Sprint Week" no longer turns on by date. A Super Admin activates it from a new "🌟 Seasonal Events" card, choosing a duration in hours or days; it automatically expires and turns itself off when that time is up (or a Super Admin can deactivate it early). This is stored in its own shared `localStorage` key so the actual game (a separate page) picks it up immediately — verified end-to-end: no event banner in the game before activation, the banner and +25% growth bonus appear in the game right after a Super Admin activates it, and both disappear again after deactivating.
+
+## Branding, header cleanup, and permanent email lock
 
 1. **Real logos in the header** — replaced the placeholder shield emoji with your actual ABCF and Pulse logos (in `assets/`), shown next to a static "Growing Seed" wordmark, matching your reference image.
 2. **Custom tree name moved out of the header** — since the header now carries your real branding, a custom tree name (e.g. "Endless") displays in the **Seed Growth card** instead, and only when one is actually set (hidden otherwise).

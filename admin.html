@@ -26,7 +26,8 @@
         <option value="user">User</option>
         <option value="moderator">Moderator</option>
         <option value="leader">Leader</option>
-        <option value="admin" selected>Admin</option>
+        <option value="admin">Admin</option>
+        <option value="superadmin" selected>Super Admin</option>
       </select>
     </div>
     <p class="card-sub" id="viewerRoleNote">Admins can change anyone's role. Other roles can view this dashboard but role controls are locked — try switching the dropdown above to see it change.</p>
@@ -62,6 +63,16 @@
     <div class="task-breakdown" id="taskBreakdown"></div>
   </section>
 
+  <section class="card" id="eventControlCard" hidden>
+    <div class="card-head"><h3>🌟 Seasonal Events</h3></div>
+    <p class="card-sub">Only Super Admins can activate events. Nothing is active by default — this is an opt-in bonus, not a scheduled one.</p>
+
+    <div class="event-status-box" id="eventStatusBox"></div>
+
+    <button class="btn" id="activateEventBtn" style="width:100%;margin-top:0.7rem;">Activate Growth Sprint Week</button>
+    <button class="btn secondary" id="deactivateEventBtn" style="width:100%;margin-top:0.5rem;" hidden>Deactivate Now</button>
+  </section>
+
   <section class="card" id="adminModView">
     <div class="card-head">
       <h3>Players</h3>
@@ -76,6 +87,7 @@
         <button class="chip" data-role="moderator">Moderator</button>
         <button class="chip" data-role="leader">Leader</button>
         <button class="chip" data-role="admin">Admin</button>
+        <button class="chip" data-role="superadmin">Super Admin</button>
       </div>
     </div>
 
@@ -124,12 +136,40 @@
   </div>
 </div>
 
+<!-- Add FP modal -->
+<div class="modal" id="addPointsModal" hidden>
+  <div class="modal-content">
+    <h2>Add Faith Points</h2>
+    <p class="card-sub" id="addPointsBody"></p>
+    <input type="number" id="addPointsInput" class="admin-search" value="50" min="1" step="1" />
+    <button class="btn" id="confirmAddPointsBtn" style="width:100%;margin-top:0.9rem;">Add FP</button>
+    <button class="btn secondary" id="cancelAddPointsBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
 <!-- View Player modal (read-only) -->
 <div class="modal" id="viewUserModal" hidden>
   <div class="modal-content">
     <h2>Player Details</h2>
     <div id="viewUserBody" class="view-user-body"></div>
     <button class="btn secondary" id="closeViewUserBtn" style="width:100%;margin-top:0.75rem;">Close</button>
+  </div>
+</div>
+
+<!-- Activate Event modal -->
+<div class="modal" id="activateEventModal" hidden>
+  <div class="modal-content">
+    <h2>🌟 Activate Growth Sprint Week</h2>
+    <p class="card-sub">Grants +25% growth from every Water, Prune, and Fertilize action, live in the game, for the duration you set below.</p>
+    <div class="duration-row">
+      <input type="number" id="eventDurationInput" class="admin-search" value="24" min="1" step="1" />
+      <select id="eventDurationUnit" class="admin-search">
+        <option value="hours">Hours</option>
+        <option value="days">Days</option>
+      </select>
+    </div>
+    <button class="btn" id="confirmActivateEventBtn" style="width:100%;margin-top:0.9rem;">Activate</button>
+    <button class="btn secondary" id="cancelActivateEventBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
   </div>
 </div>
 

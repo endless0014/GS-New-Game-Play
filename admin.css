@@ -140,6 +140,27 @@
 .role-badge.moderator { background: #e3edfd; color: #2856a5; }
 .role-badge.leader    { background: #f1e6fb; color: #6a2fa5; }
 .role-badge.admin     { background: #fdecd8; color: #a5590a; }
+.role-badge.superadmin { background: linear-gradient(135deg, #fde68a, #f3c94a); color: #6b4a06; font-weight: 900; }
+
+.event-status-box {
+  background: var(--surface-mute);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+.event-status-box.is-active {
+  background: linear-gradient(135deg, #fff2c2, #ffe08a);
+  color: #6b4a06;
+}
+
+.duration-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.duration-row input { flex: 1; }
+.duration-row select { flex: 1; }
 
 .role-select-label {
   display: flex;
@@ -270,6 +291,7 @@
 #loginChart, #taskChart {
   width: 100%;
   display: block;
+  margin-bottom: 0.4rem;
 }
 
 .task-breakdown {

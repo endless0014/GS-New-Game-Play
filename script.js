@@ -141,20 +141,9 @@ const CONFIG = {
     { id: 'gospel5',    icon: '📢', label: 'Voice of Faith',    desc: 'Share the Gospel 5 times.',           check: s => s.gospelShareCount >= 5 }
   ],
 
-  // ---------------- Seasonal / limited-time events ----------------
-  // Each event has a start/end date (YYYY-MM-DD) and a small bonus multiplier
-  // applied to tend-cycle growth while it's active. Add more entries to
-  // schedule future events — nothing else in the code needs to change.
-  events: [
-    {
-      id: 'growth-sprint-2026-07',
-      label: '🌟 Growth Sprint Week',
-      description: 'Limited time: +25% growth from every Water, Prune, and Fertilize.',
-      start: '2026-07-01',
-      end: '2026-07-14',
-      growthMultiplier: 1.25
-    }
-  ],
+  // Seasonal events are no longer scheduled by date here — see
+  // getActiveEvent() below, which reads a shared key that only a Super
+  // Admin (from the Admin Dashboard) can turn on, for a duration they choose.
 
   // ---------------- Mock team (sandbox demo data) ----------------
   // Standalone sample so "My Team" has something to show without a real
@@ -1202,9 +1191,23 @@ function renderTeamBattle() {
 }
 
 /* ---------------- Seasonal / limited-time events ---------------- */
+// Events are no longer automatic-by-date — a Super Admin has to
+// deliberately activate one from the Admin Dashboard, for a duration they
+// choose. This reads that same shared key, so nothing is active unless a
+// Super Admin turned it on, and it stops the moment the duration expires.
+const SHARED_EVENT_KEY = 'growingSeedSharedEventState_v1';
+
 function getActiveEvent() {
-  const today = getDateKey();
-  return CONFIG.events.find(e => today >= e.start && today <= e.end) || null;
+  try {
+    const raw = localStorage.getItem(SHARED_EVENT_KEY);
+    if (!raw) return null;
+    const ev = JSON.parse(raw);
+    if (!ev || !ev.active) return null;
+    const expiresAt = ev.activatedAt + ev.durationHours * 3600000;
+    return Date.now() < expiresAt ? ev : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 function renderEventBanner() {

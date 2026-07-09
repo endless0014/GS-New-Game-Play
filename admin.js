@@ -8,8 +8,15 @@
 
 const STORAGE_KEY = 'growingSeedAdminSandbox_v1';
 const STAGE_LABELS = ['Seed', 'Germination', 'Seedling', 'Sapling', 'Young Tree', 'Mature Tree', 'Old Tree'];
-const ROLE_TIERS = ['user', 'moderator', 'leader', 'admin'];
-const ROLE_LABELS = { user: 'User', moderator: 'Moderator', leader: 'Leader', admin: 'Admin' };
+const ROLE_TIERS = ['user', 'moderator', 'leader', 'admin', 'superadmin'];
+const ROLE_LABELS = { user: 'User', moderator: 'Moderator', leader: 'Leader', admin: 'Admin', superadmin: 'Super Admin' };
+
+// These two accounts are permanently Super Admin — their role can never be
+// changed through the UI, by anyone, including other Super Admins. This is
+// enforced both here (disabling the control) and in updateRole() (a hard
+// guard), so it can't be bypassed by re-enabling the dropdown in devtools
+// and firing the change event manually.
+const LOCKED_SUPERADMIN_EMAILS = ['endlesssh0014@gmail.com', 'endlessnogu@gmail.com'];
 
 const FIRST_NAMES = ['Maria', 'James', 'Grace', 'Daniel', 'Sofia', 'Noah', 'Ruth', 'Samuel', 'Hannah', 'Elijah', 'Naomi', 'Isaac'];
 const LAST_NAMES  = ['Santos', 'Reyes', 'Cruz', 'Bautista', 'Garcia', 'Mendoza', 'Torres', 'Ramos'];
@@ -19,7 +26,7 @@ let state = loadState();
 function randomFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-function makeMockUser(role = 'user') {
+function makeMockUser(role = 'user', overrides = {}) {
   const first = randomFrom(FIRST_NAMES);
   const last = randomFrom(LAST_NAMES);
   const fp = randomInt(0, 800);
@@ -33,7 +40,9 @@ function makeMockUser(role = 'user') {
     stage: randomFrom(STAGE_LABELS),
     fruit: randomInt(0, 12),
     teamLeaderId: null,          // set once a join request is approved
-    pendingRequestLeaderId: null // set while a join request awaits approval
+    pendingRequestLeaderId: null, // set while a join request awaits approval
+    roleLocked: false,
+    ...overrides
   };
 }
 
@@ -59,15 +68,31 @@ function generateDailyStats() {
   return stats;
 }
 
-// Only these two roles can view the full player-management dashboard.
+// Only these roles can view the full player-management dashboard.
 // Leader and User get their own dedicated views instead (see renderLeaderView/renderUserView).
+//
+// Current permission matrix (also shown live in the dashboard under
+// "Previewing as"):
+//   Super Admin — every action, including changing anyone's role (except
+//                 the two permanently-locked accounts) and activating/
+//                 deactivating seasonal events.
+//   Admin       — add FP, view, open UI, reset password, delete, restore,
+//                 and reset progress. Can NOT change roles or manage events
+//                 — only a Super Admin can do either of those now.
+//   Moderator   — everything Admin has except Reset Progress.
 const PERMISSIONS = {
-  admin:     { addPoints: true, resetPassword: true, resetProgress: true,  restore: true, view: true, delete: true, openUI: true, changeRole: true },
-  moderator: { addPoints: true, resetPassword: true, resetProgress: false, restore: true, view: true, delete: true, openUI: true, changeRole: false }
+  superadmin: { addPoints: true, resetPassword: true, resetProgress: true,  restore: true, view: true, delete: true, openUI: true, changeRole: true,  manageEvents: true },
+  admin:      { addPoints: true, resetPassword: true, resetProgress: true,  restore: true, view: true, delete: true, openUI: true, changeRole: false, manageEvents: false },
+  moderator:  { addPoints: true, resetPassword: true, resetProgress: false, restore: true, view: true, delete: true, openUI: true, changeRole: false, manageEvents: false }
 };
 
 function defaultState() {
-  const users = [makeMockUser('admin')];
+  // The two permanent Super Admins — locked, cannot be role-changed by anyone.
+  const users = [
+    makeMockUser('superadmin', { name: 'Endless (SH)', email: 'endlesssh0014@gmail.com', roleLocked: true }),
+    makeMockUser('superadmin', { name: 'Endless (Nogu)', email: 'endlessnogu@gmail.com', roleLocked: true }),
+    makeMockUser('admin')
+  ];
   const tierMix = ['user', 'user', 'user', 'user', 'moderator', 'leader'];
   tierMix.forEach(role => users.push(makeMockUser(role)));
 
@@ -99,6 +124,19 @@ function loadState() {
       if (u.role === 'player') u.role = 'user';
       if (u.teamLeaderId === undefined) u.teamLeaderId = null;
       if (u.pendingRequestLeaderId === undefined) u.pendingRequestLeaderId = null;
+      if (u.roleLocked === undefined) u.roleLocked = false;
+    });
+    // Sessions saved before Super Admin existed won't have the two locked
+    // accounts yet — add them in rather than leaving the dashboard without
+    // any Super Admin to preview as.
+    LOCKED_SUPERADMIN_EMAILS.forEach((email, i) => {
+      if (!parsed.users.some(u => u.email === email)) {
+        parsed.users.unshift(makeMockUser('superadmin', {
+          name: i === 0 ? 'Endless (SH)' : 'Endless (Nogu)',
+          email,
+          roleLocked: true
+        }));
+      }
     });
     return parsed;
   } catch (e) {
@@ -117,7 +155,8 @@ function renderAll() {
   renderStats();
   renderCharts();
   applyViewerRoleVisibility();
-  if (state.viewerRole === 'admin' || state.viewerRole === 'moderator') {
+  renderEventControl();
+  if (state.viewerRole === 'admin' || state.viewerRole === 'moderator' || state.viewerRole === 'superadmin') {
     renderUsers();
     renderDeletedUsers();
   } else if (state.viewerRole === 'leader') {
@@ -130,8 +169,8 @@ function renderAll() {
 
 function applyViewerRoleVisibility() {
   const role = state.viewerRole;
-  el('adminModView').hidden = !(role === 'admin' || role === 'moderator');
-  el('deletedUsersCard').hidden = !(role === 'admin' || role === 'moderator');
+  el('adminModView').hidden = !(role === 'admin' || role === 'moderator' || role === 'superadmin');
+  el('deletedUsersCard').hidden = !(role === 'admin' || role === 'moderator' || role === 'superadmin');
   el('leaderView').hidden = role !== 'leader';
   el('userView').hidden = role !== 'user';
 
@@ -163,7 +202,7 @@ function applyViewerRoleVisibility() {
 function renderStats() {
   const users = state.users;
   const total = users.length;
-  const admins = users.filter(u => u.role === 'admin').length;
+  const admins = users.filter(u => u.role === 'admin' || u.role === 'superadmin').length;
   const staff = users.filter(u => u.role === 'moderator' || u.role === 'leader').length;
   const avgFp = total ? Math.round(users.reduce((s, u) => s + u.fp, 0) / total) : 0;
   const avgStreak = total ? (users.reduce((s, u) => s + u.streak, 0) / total).toFixed(1) : 0;
@@ -191,11 +230,11 @@ function renderUsers() {
   const perms = PERMISSIONS[state.viewerRole] || PERMISSIONS.moderator;
 
   list.forEach(u => {
-    if (perms.addPoints) el(`add-${u.id}`).addEventListener('click', () => addPoints(u.id, 50));
+    if (perms.addPoints) el(`add-${u.id}`).addEventListener('click', () => openAddPointsModal(u.id));
     if (perms.view) el(`view-${u.id}`).addEventListener('click', () => viewUser(u.id));
     if (perms.openUI) el(`openui-${u.id}`).addEventListener('click', () => openUIAs(u.id));
     if (perms.resetPassword) el(`resetpw-${u.id}`).addEventListener('click', () => resetPassword(u.id));
-    if (perms.delete) el(`delete-${u.id}`).addEventListener('click', () => confirmAction(
+    if (perms.delete && !u.roleLocked) el(`delete-${u.id}`).addEventListener('click', () => confirmAction(
       'Delete this player?',
       `${u.name} will be moved to Deleted Players, where an Admin or Moderator can restore them. This only affects local demo data.`,
       () => deleteUser(u.id)
@@ -208,7 +247,7 @@ function renderUsers() {
         () => resetUser(u.id)
       ));
     }
-    if (perms.changeRole) {
+    if (perms.changeRole && !u.roleLocked) {
       const roleSelect = el(`roleSelect-${u.id}`);
       if (roleSelect) roleSelect.addEventListener('change', () => updateRole(u.id, roleSelect.value));
     }
@@ -221,11 +260,18 @@ function userCardHtml(u) {
     `<option value="${tier}" ${u.role === tier ? 'selected' : ''}>${ROLE_LABELS[tier]}</option>`
   ).join('');
 
+  // A permanently-locked account overrides everything else, including a
+  // Super Admin viewer — this can't be re-enabled from the UI at all.
+  const roleDisabled = u.roleLocked || !perms.changeRole;
+  const roleTooltip = u.roleLocked
+    ? 'title="Permanently locked — this account\'s role can never be changed"'
+    : (perms.changeRole ? '' : 'title="Only Super Admins can change roles"');
+
   return `
     <div class="user-card">
       <div class="user-card-top">
         <div>
-          <div class="user-name">${escapeHtml(u.name)}</div>
+          <div class="user-name">${escapeHtml(u.name)} ${u.roleLocked ? '🔒' : ''}</div>
           <div class="user-email">${escapeHtml(u.email)}</div>
         </div>
         <span class="role-badge ${u.role}">${ROLE_LABELS[u.role]}</span>
@@ -238,17 +284,17 @@ function userCardHtml(u) {
       </div>
       <label class="role-select-label">
         Role
-        <select id="roleSelect-${u.id}" class="role-select" ${perms.changeRole ? '' : 'disabled title="Only Admins can change roles"'}>
+        <select id="roleSelect-${u.id}" class="role-select" ${roleDisabled ? `disabled ${roleTooltip}` : ''}>
           ${roleOptions}
         </select>
       </label>
       <div class="user-actions">
-        <button id="add-${u.id}">+50 FP</button>
+        <button id="add-${u.id}">+FP</button>
         <button id="view-${u.id}">View</button>
         <button id="openui-${u.id}">Open UI</button>
         <button id="resetpw-${u.id}">Reset Password</button>
-        <button id="delete-${u.id}" class="danger-action">Delete</button>
-        <button id="reset-${u.id}" class="danger-action" ${perms.resetProgress ? '' : 'disabled title="Only Admins can reset progress"'}>Reset Progress</button>
+        <button id="delete-${u.id}" class="danger-action" ${u.roleLocked ? 'disabled title="Super Admin accounts cannot be deleted"' : ''}>Delete</button>
+        <button id="reset-${u.id}" class="danger-action" ${perms.resetProgress ? '' : 'disabled title="Only Admins and Super Admins can reset progress"'}>Reset Progress</button>
       </div>
     </div>
   `;
@@ -268,17 +314,49 @@ function addPoints(id, amount) {
   renderAll();
 }
 
+let pendingAddPointsId = null;
+
+function openAddPointsModal(id) {
+  const u = state.users.find(x => x.id === id);
+  if (!u) return;
+  pendingAddPointsId = id;
+  el('addPointsBody').textContent = `How many Faith Points should be added to ${u.name}?`;
+  el('addPointsInput').value = 50;
+  el('addPointsModal').hidden = false;
+}
+
+el('cancelAddPointsBtn').addEventListener('click', () => {
+  el('addPointsModal').hidden = true;
+  pendingAddPointsId = null;
+});
+
+el('confirmAddPointsBtn').addEventListener('click', () => {
+  const amount = Math.floor(Number(el('addPointsInput').value));
+  if (!pendingAddPointsId || !Number.isFinite(amount) || amount <= 0) {
+    showToast('Enter a positive number of FP.', 'warning');
+    return;
+  }
+  addPoints(pendingAddPointsId, amount);
+  el('addPointsModal').hidden = true;
+  pendingAddPointsId = null;
+});
+
 function updateRole(id, newRole) {
   // Guard here too, not just via the disabled attribute — mirrors the
   // real app needing a server-side check, not just a hidden UI control.
   const perms = PERMISSIONS[state.viewerRole] || PERMISSIONS.moderator;
   if (!perms.changeRole) {
-    showToast('Only Admins can change roles.', 'warning');
+    showToast('Only Super Admins can change roles.', 'warning');
     renderUsers();
     return;
   }
   const u = state.users.find(x => x.id === id);
   if (!u || !ROLE_TIERS.includes(newRole)) return;
+  if (u.roleLocked) {
+    showToast(`${u.name}'s role is permanently locked and cannot be changed.`, 'warning');
+    renderUsers();
+    return;
+  }
   u.role = newRole;
   showToast(`${u.name} is now ${ROLE_LABELS[newRole]}.`, 'info');
   renderAll();
@@ -338,6 +416,10 @@ function resetPassword(id) {
 function deleteUser(id) {
   const idx = state.users.findIndex(x => x.id === id);
   if (idx === -1) return;
+  if (state.users[idx].roleLocked) {
+    showToast('Super Admin accounts cannot be deleted.', 'warning');
+    return;
+  }
   const [removed] = state.users.splice(idx, 1);
   state.deletedUsers.push(removed);
   showToast(`${removed.name} was deleted.`, 'info');
@@ -356,7 +438,7 @@ function restoreUser(id) {
 function renderDeletedUsers() {
   const perms = PERMISSIONS[state.viewerRole] || PERMISSIONS.moderator;
   const list = state.deletedUsers;
-  el('deletedUsersCard').hidden = !(state.viewerRole === 'admin' || state.viewerRole === 'moderator') || list.length === 0;
+  el('deletedUsersCard').hidden = !(state.viewerRole === 'admin' || state.viewerRole === 'moderator' || state.viewerRole === 'superadmin') || list.length === 0;
   el('deletedUserList').innerHTML = list.map(u => `
     <div class="user-card">
       <div class="user-card-top">
@@ -671,11 +753,17 @@ function drawBarChart(canvasId, labels, values, color) {
   ctx.clearRect(0, 0, cssWidth, cssHeight);
 
   const max = Math.max(...values, 1);
-  const padding = { top: 10, bottom: 24, left: 8, right: 8 };
+  // Extra bottom padding so date labels always have room and never sit
+  // flush against the card's rounded border, regardless of range size.
+  const padding = { top: 10, bottom: 28, left: 8, right: 8 };
   const chartHeight = cssHeight - padding.top - padding.bottom;
   const n = values.length;
-  const gap = 6;
-  const barWidth = Math.max(4, (cssWidth - padding.left - padding.right - gap * (n - 1)) / n);
+  // Gap shrinks as the number of bars grows, instead of staying fixed —
+  // a fixed 6px gap plus a hard 4px minimum bar width was forcing bars to
+  // overflow the canvas width entirely once a range had 40+ days in it.
+  const gap = n > 60 ? 0.5 : n > 40 ? 1 : n > 20 ? 2 : n > 14 ? 4 : 6;
+  let barWidth = (cssWidth - padding.left - padding.right - gap * (n - 1)) / n;
+  barWidth = Math.max(1, barWidth);
 
   values.forEach((v, i) => {
     const barHeight = (v / max) * chartHeight;
@@ -756,6 +844,90 @@ function showToast(message, type = 'info') {
     setTimeout(() => t.remove(), 250);
   }, 2200);
 }
+
+/* ---------------- Seasonal events (Super Admin only) ----------------
+   Lives in its own localStorage key (not inside the admin's own state
+   blob) because it needs to be readable by the actual game (index.html),
+   a completely separate page — this is the shared "control channel"
+   between the two. Nothing is active by default; a Super Admin has to
+   deliberately turn it on, and it auto-expires after the chosen duration. */
+const SHARED_EVENT_KEY = 'growingSeedSharedEventState_v1';
+
+function getSharedEvent() {
+  try {
+    const raw = localStorage.getItem(SHARED_EVENT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setSharedEvent(eventData) {
+  localStorage.setItem(SHARED_EVENT_KEY, JSON.stringify(eventData));
+}
+
+function isEventCurrentlyActive(ev) {
+  if (!ev || !ev.active) return false;
+  const expiresAt = ev.activatedAt + ev.durationHours * 3600000;
+  return Date.now() < expiresAt;
+}
+
+function renderEventControl() {
+  const isSuperAdmin = state.viewerRole === 'superadmin';
+  el('eventControlCard').hidden = !isSuperAdmin;
+  if (!isSuperAdmin) return;
+
+  const ev = getSharedEvent();
+  const active = isEventCurrentlyActive(ev);
+  const box = el('eventStatusBox');
+  box.classList.toggle('is-active', active);
+
+  if (active) {
+    const expiresAt = new Date(ev.activatedAt + ev.durationHours * 3600000);
+    box.textContent = `🌟 Active until ${expiresAt.toLocaleString()}`;
+    el('activateEventBtn').hidden = true;
+    el('deactivateEventBtn').hidden = false;
+  } else {
+    box.textContent = 'Not active — the game gets no growth bonus right now.';
+    el('activateEventBtn').hidden = false;
+    el('deactivateEventBtn').hidden = true;
+  }
+}
+
+el('activateEventBtn').addEventListener('click', () => {
+  el('eventDurationInput').value = 24;
+  el('eventDurationUnit').value = 'hours';
+  el('activateEventModal').hidden = false;
+});
+el('cancelActivateEventBtn').addEventListener('click', () => { el('activateEventModal').hidden = true; });
+
+el('confirmActivateEventBtn').addEventListener('click', () => {
+  const amount = Number(el('eventDurationInput').value);
+  const unit = el('eventDurationUnit').value;
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showToast('Enter a positive duration.', 'warning');
+    return;
+  }
+  const durationHours = unit === 'days' ? amount * 24 : amount;
+  setSharedEvent({
+    active: true,
+    activatedAt: Date.now(),
+    durationHours,
+    label: '🌟 Growth Sprint Week',
+    description: 'Limited time: +25% growth from every Water, Prune, and Fertilize.',
+    growthMultiplier: 1.25
+  });
+  el('activateEventModal').hidden = true;
+  showToast(`Growth Sprint Week activated for ${amount} ${unit}.`, 'success');
+  renderEventControl();
+});
+
+el('deactivateEventBtn').addEventListener('click', () => {
+  const ev = getSharedEvent();
+  if (ev) setSharedEvent({ ...ev, active: false });
+  showToast('Growth Sprint Week deactivated.', 'info');
+  renderEventControl();
+});
 
 /* ---------------- Init ---------------- */
 renderAll();
