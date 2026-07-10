@@ -145,15 +145,9 @@ const CONFIG = {
   // getActiveEvent() below, which reads a shared key that only a Super
   // Admin (from the Admin Dashboard) can turn on, for a duration they choose.
 
-  // ---------------- Mock team (sandbox demo data) ----------------
-  // Standalone sample so "My Team" has something to show without a real
-  // backend — same spirit as the Admin Dashboard's mock players.
-  teamRoster: [
-    { name: 'Grace M.',  stage: 'Sapling',    streak: 5 },
-    { name: 'Daniel T.', stage: 'Young Tree', streak: 3 },
-    { name: 'Hannah R.', stage: 'Seedling',   streak: 7 },
-    { name: 'Samuel B.', stage: 'Mature Tree',streak: 12 }
-  ],
+  // ---------------- Mock team feed (sandbox demo data) ----------------
+  // Standalone sample so the Team feed has something to show without a
+  // real backend — same spirit as the Admin Dashboard's mock players.
   teamFeedSeed: [
     { name: 'Grace M.',  action: 'prayed today',            icon: '🙏' },
     { name: 'Daniel T.', action: 'reached Young Tree!',      icon: '🌳' },
@@ -251,8 +245,8 @@ function defaultState() {
     challengesSurvived: 0,   // Fight/Endure resolved (not Give Up)
     gospelShareCount: 0,
     loginCyclesCompleted: 0, // incremented each time a 7-day login cycle finishes
-    teamFeedReactions: {},   // key: feed item index -> { emoji: count }
-    team: null               // null | { name: string, isOwner: boolean }
+    teamFeedReactions: {},   // key: feed item index -> the emoji THIS player reacted with (only one per item)
+    team: null               // null | { name, isOwner, leaderName, members: [...], requests: [...] }
   };
 }
 
@@ -609,7 +603,11 @@ el('resultCloseBtn').addEventListener('click', () => {
 });
 
 /* ---------------- Tabs / bottom nav ---------------- */
-document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+// The Team button doesn't switch tabs — it opens a modal on top of whatever
+// tab is currently showing (same pattern as tapping the tree opens Daily
+// Tasks) — so it's deliberately excluded from this generic handler and
+// wired separately near the Team modal code below.
+document.querySelectorAll('.bottom-nav-item[data-tab]').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
@@ -1017,12 +1015,44 @@ function selectSeedType(key) {
 /* ---------------- Ranking (sample local leaderboard) ---------------- */
 const MOCK_RANKING_NAMES = ['Grace M.', 'Daniel T.', 'Hannah R.', 'Samuel B.', 'Naomi C.'];
 const MOCK_TEAM_BATTLE = [
-  { team: 'Rooted',        fruit: 34 },
   { team: 'Branching Out', fruit: 41 },
   { team: 'Fruitbearers',  fruit: 27 }
 ];
 
-let rankingView = 'individual'; // 'individual' | 'team'
+// The checklist a leader can see per teammate — mirrors the real daily
+// tend cycle + faith activities, so "Buzz" can name the specific thing
+// someone hasn't done yet instead of a generic nag.
+const TEAM_TASK_DEFS = [
+  { key: 'water',    label: 'Water',      icon: '💧' },
+  { key: 'prune',    label: 'Prune',      icon: '✂️' },
+  { key: 'fertilize',label: 'Fertilize',  icon: '✨' },
+  { key: 'prayer',   label: 'Prayer',     icon: '🙏' },
+  { key: 'bible',    label: 'Bible',      icon: '📘' },
+  { key: 'devotion', label: 'Devotion',   icon: '🕊️' }
+];
+
+const MEMBER_NAME_POOL = ['Grace M.', 'Daniel T.', 'Hannah R.', 'Samuel B.', 'Naomi C.', 'Isaac R.', 'Ruth P.', 'Elijah M.'];
+const REQUEST_NAME_POOL = ['Sofia G.', 'Noah B.', 'Mary J.'];
+
+function makeMockMember(name) {
+  const tasks = {};
+  TEAM_TASK_DEFS.forEach(t => { tasks[t.key] = Math.random() < 0.6; });
+  return {
+    id: 'm_' + Math.random().toString(36).slice(2, 9),
+    name,
+    stage: randomStageLabel(),
+    streak: Math.floor(Math.random() * 12) + 1,
+    tasks
+  };
+}
+
+function randomStageLabel() {
+  const stages = CONFIG.stages.map(s => s.label);
+  return stages[Math.floor(Math.random() * stages.length)];
+}
+
+/* ---------------- Ranking tab: pure leaderboards (Individual + Team) ---------------- */
+let rankingView = 'individual';
 
 el('rankingIndividualBtn').addEventListener('click', () => {
   rankingView = 'individual';
@@ -1042,72 +1072,9 @@ function renderRanking() {
   if (rankingView === 'individual') {
     renderIndividualRanking();
   } else {
-    renderTeamPanel();
-  }
-}
-
-const JOINABLE_TEAMS = ['Branching Out', 'Fruitbearers', 'The Vineyard'];
-
-function renderTeamPanel() {
-  const hasTeam = !!state.team;
-  el('noTeamPanel').hidden = hasTeam;
-  el('hasTeamPanel').hidden = !hasTeam;
-
-  if (hasTeam) {
-    el('myTeamName').textContent = `🌳 ${state.team.name}${state.team.isOwner ? ' (Leader)' : ''}`;
-    renderTeamRoster();
-    renderTeamFeed();
     renderTeamBattle();
-  } else {
-    el('joinableTeamsList').innerHTML = JOINABLE_TEAMS.map(name => `
-      <div class="team-member-row">
-        <span class="team-member-name">🌳 ${name}</span>
-        <button class="btn secondary" id="join-team-${name.replace(/\s+/g, '-')}" style="padding:0.4rem 0.8rem;font-size:0.78rem;">Join</button>
-      </div>
-    `).join('');
-    JOINABLE_TEAMS.forEach(name => {
-      const btnId = `join-team-${name.replace(/\s+/g, '-')}`;
-      el(btnId).addEventListener('click', () => {
-        state.team = { name, isOwner: false };
-        SFX.tap();
-        showToast(`You joined ${name}!`, 'success');
-        saveState();
-        renderRanking();
-      });
-    });
   }
 }
-
-el('createTeamOpenBtn').addEventListener('click', () => {
-  el('createTeamNameInput').value = '';
-  el('createTeamModal').hidden = false;
-});
-el('cancelCreateTeamBtn').addEventListener('click', () => { el('createTeamModal').hidden = true; });
-
-el('confirmCreateTeamBtn').addEventListener('click', () => {
-  const TEAM_COST = 500;
-  const name = el('createTeamNameInput').value.trim().slice(0, 24);
-  if (!name) { showToast('Give your team a name first.', 'warning'); return; }
-  if (state.faithPoints < TEAM_COST) {
-    showToast(`Creating a team costs ${TEAM_COST} FP — you have ${Math.floor(state.faithPoints)}.`, 'warning');
-    return;
-  }
-  state.faithPoints -= TEAM_COST;
-  state.team = { name, isOwner: true };
-  el('createTeamModal').hidden = true;
-  SFX.badge();
-  showToast(`${name} created for ${TEAM_COST} FP! You're the team leader now.`, 'success');
-  render();
-  renderRanking();
-});
-
-el('leaveTeamBtn2').addEventListener('click', () => {
-  if (!confirm(`Leave ${state.team.name}? ${state.team.isOwner ? 'As the creator, you can recreate a new team later for another 500 FP.' : ''}`)) return;
-  state.team = null;
-  saveState();
-  renderRanking();
-  showToast('You left the team.', 'info');
-});
 
 function renderIndividualRanking() {
   const mockScores = MOCK_RANKING_NAMES.map(name => ({
@@ -1135,25 +1102,219 @@ function renderIndividualRanking() {
   `).join('');
 }
 
-function renderTeamRoster() {
-  el('teamRosterList').innerHTML = CONFIG.teamRoster.map(m => `
-    <div class="team-member-row">
-      <span class="team-member-name">${m.name}</span>
-      <span class="team-member-meta">${m.stage} · 🔥${m.streak}</span>
+function renderTeamBattle() {
+  const note = el('teamRankingNote');
+  const rows = MOCK_TEAM_BATTLE.map(t => ({ team: t.team, fruit: t.fruit, isYours: false }));
+
+  if (state.team) {
+    rows.push({ team: state.team.name, fruit: MOCK_TEAM_BATTLE.length ? 30 + state.fruitCount : state.fruitCount, isYours: true });
+    note.textContent = 'Sample team leaderboard, ranked by fruit collected this week.';
+  } else {
+    note.textContent = 'Join or create a team (see the Team tab below) to appear on this board.';
+  }
+
+  rows.sort((a, b) => b.fruit - a.fruit);
+  el('teamBattleList').innerHTML = rows.map((r, i) => `
+    <div class="ranking-row ${r.isYours ? 'is-you' : ''}">
+      <span class="ranking-rank">#${i + 1}</span>
+      <span class="ranking-name">${r.team}${r.isYours ? ' (You)' : ''}</span>
+      <span class="ranking-fp">🍎 ${r.fruit}</span>
     </div>
   `).join('');
 }
 
+/* ---------------- Team modal (opened from the bottom nav) ---------------- */
+const JOINABLE_TEAMS = ['Branching Out', 'Fruitbearers', 'The Vineyard'];
+let activeTeamTab = 'roster';
+
+el('teamNavBtn').addEventListener('click', () => {
+  renderTeamModal();
+  el('teamModal').hidden = false;
+});
+el('closeTeamModalBtn').addEventListener('click', () => { el('teamModal').hidden = true; });
+
+function renderTeamModal() {
+  const hasTeam = !!state.team;
+  el('noTeamPanel').hidden = hasTeam;
+  el('hasTeamPanel').hidden = !hasTeam;
+
+  if (!hasTeam) {
+    el('joinableTeamsList').innerHTML = JOINABLE_TEAMS.map(name => `
+      <div class="team-member-row">
+        <span class="team-member-name">🌳 ${name}</span>
+        <button class="btn secondary" id="join-team-${name.replace(/\s+/g, '-')}" style="padding:0.4rem 0.8rem;font-size:0.78rem;">Request to Join</button>
+      </div>
+    `).join('');
+    JOINABLE_TEAMS.forEach(name => {
+      const btnId = `join-team-${name.replace(/\s+/g, '-')}`;
+      el(btnId).addEventListener('click', () => {
+        const members = [makeMockMember(MEMBER_NAME_POOL[0]), makeMockMember(MEMBER_NAME_POOL[1]), makeMockMember(MEMBER_NAME_POOL[2])];
+        state.team = { name, isOwner: false, leaderName: MEMBER_NAME_POOL[3], members, requests: [] };
+        SFX.tap();
+        showToast(`You joined ${name}!`, 'success');
+        saveState();
+        renderTeamModal();
+      });
+    });
+    return;
+  }
+
+  // Team name is front and center in the modal, per your request — with a
+  // Leader tag when you created it, or the actual leader's name otherwise.
+  el('teamModalName').textContent = `🌳 ${state.team.name}`;
+  el('teamModalSubtitle').textContent = state.team.isOwner
+    ? 'You are the team leader.'
+    : `Led by ${state.team.leaderName}.`;
+
+  el('teamRequestsTabBtn').hidden = !state.team.isOwner;
+  if (!state.team.isOwner && activeTeamTab === 'requests') activeTeamTab = 'roster';
+  switchTeamTab(activeTeamTab);
+
+  renderTeamRoster();
+  renderTeamRequests();
+  renderTeamFeed();
+}
+
+document.querySelectorAll('.team-tabs .chip').forEach(chip => {
+  chip.addEventListener('click', () => switchTeamTab(chip.dataset.teamTab));
+});
+
+function switchTeamTab(tab) {
+  activeTeamTab = tab;
+  document.querySelectorAll('.team-tabs .chip').forEach(c => c.classList.toggle('active', c.dataset.teamTab === tab));
+  el('teamRosterPanel').hidden = tab !== 'roster';
+  el('teamRequestsPanel').hidden = tab !== 'requests';
+  el('teamFeedPanel').hidden = tab !== 'feed';
+}
+
+function renderTeamRoster() {
+  const isOwner = state.team.isOwner;
+  const members = state.team.members;
+
+  el('teamRosterList').innerHTML = members.map(m => {
+    const doneCount = TEAM_TASK_DEFS.filter(t => m.tasks[t.key]).length;
+    const taskChecklist = TEAM_TASK_DEFS.map(t => `
+      <span class="task-pill ${m.tasks[t.key] ? 'done' : 'pending'}">${t.icon} ${t.label}</span>
+    `).join('');
+    return `
+      <div class="team-member-row team-member-card">
+        <div class="team-member-top">
+          <span class="team-member-name">${escapeHtml(m.name)}</span>
+          <span class="team-member-meta">${m.stage} · 🔥${m.streak}</span>
+        </div>
+        <div class="task-status-note">${doneCount}/${TEAM_TASK_DEFS.length} tasks done today</div>
+        <div class="task-checklist">${taskChecklist}</div>
+        ${isOwner ? `
+          <div class="team-member-actions">
+            <button class="btn secondary" id="buzz-${m.id}" style="padding:0.4rem 0.7rem;font-size:0.78rem;">🔔 Buzz</button>
+            <button class="btn secondary danger-action" id="kick-${m.id}" style="padding:0.4rem 0.7rem;font-size:0.78rem;">Kick</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  if (isOwner) {
+    members.forEach(m => {
+      el(`buzz-${m.id}`).addEventListener('click', () => openBuzzModal(m.id));
+      el(`kick-${m.id}`).addEventListener('click', () => {
+        if (!confirm(`Remove ${m.name} from ${state.team.name}?`)) return;
+        state.team.members = state.team.members.filter(x => x.id !== m.id);
+        saveState();
+        showToast(`${m.name} was removed from the team.`, 'info');
+        renderTeamRoster();
+      });
+    });
+  }
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ---------------- Buzz / Notify (task-aware reminder) ---------------- */
+let pendingBuzzMemberId = null;
+
+function openBuzzModal(memberId) {
+  const m = state.team.members.find(x => x.id === memberId);
+  if (!m) return;
+  const incomplete = TEAM_TASK_DEFS.filter(t => !m.tasks[t.key]);
+  pendingBuzzMemberId = memberId;
+  el('buzzModalTitle').textContent = `Notify ${m.name}`;
+  el('buzzModalBody').textContent = incomplete.length
+    ? `${m.name} still hasn't done: ${incomplete.map(t => `${t.icon} ${t.label}`).join(', ')}. Send a reminder?`
+    : `${m.name} has completed everything today! Send an encouragement instead?`;
+  el('teamModal').hidden = true; // avoid two modals stacking at the same z-index
+  el('buzzModal').hidden = false;
+}
+el('cancelBuzzBtn').addEventListener('click', () => {
+  el('buzzModal').hidden = true;
+  el('teamModal').hidden = false;
+  pendingBuzzMemberId = null;
+});
+
+el('sendBuzzBtn').addEventListener('click', () => {
+  const m = state.team.members.find(x => x.id === pendingBuzzMemberId);
+  el('buzzModal').hidden = true;
+  el('teamModal').hidden = false;
+  if (!m) return;
+  const incomplete = TEAM_TASK_DEFS.filter(t => !m.tasks[t.key]);
+  SFX.tap();
+  showToast(
+    incomplete.length
+      ? `Reminder sent to ${m.name} about: ${incomplete.map(t => t.label).join(', ')}.`
+      : `Sent ${m.name} a thumbs up for finishing everything today!`,
+    'success'
+  );
+  pendingBuzzMemberId = null;
+});
+
+/* ---------------- Pending join requests (leader only) ---------------- */
+function renderTeamRequests() {
+  if (!state.team.isOwner) return;
+  const requests = state.team.requests;
+  el('teamRequestsEmpty').hidden = requests.length > 0;
+  el('teamRequestsList').innerHTML = requests.map(r => `
+    <div class="team-member-row">
+      <span class="team-member-name">${escapeHtml(r.name)}</span>
+      <div class="team-member-actions">
+        <button id="approve-${r.id}">✓ Approve</button>
+        <button id="decline-${r.id}" class="danger-action">Decline</button>
+      </div>
+    </div>
+  `).join('');
+
+  requests.forEach(r => {
+    el(`approve-${r.id}`).addEventListener('click', () => {
+      state.team.members.push(makeMockMember(r.name));
+      state.team.requests = state.team.requests.filter(x => x.id !== r.id);
+      saveState();
+      showToast(`${r.name} joined the team.`, 'success');
+      renderTeamRequests();
+      renderTeamRoster();
+    });
+    el(`decline-${r.id}`).addEventListener('click', () => {
+      state.team.requests = state.team.requests.filter(x => x.id !== r.id);
+      saveState();
+      showToast(`Declined ${r.name}'s request.`, 'info');
+      renderTeamRequests();
+    });
+  });
+}
+
+/* ---------------- Team feed — one reaction per person, per post ---------------- */
 function renderTeamFeed() {
   el('teamFeedList').innerHTML = CONFIG.teamFeedSeed.map((item, i) => {
-    const reactions = state.teamFeedReactions[i] || {};
+    const myReaction = state.teamFeedReactions[i];
     return `
       <div class="team-feed-item">
         <div class="team-feed-text">${item.icon} <strong>${item.name}</strong> ${item.action}</div>
         <div class="team-feed-reactions">
           ${['🔥', '🙏', '👏'].map(emoji => `
-            <button class="reaction-btn" data-feed-index="${i}" data-emoji="${emoji}">
-              ${emoji} <span>${reactions[emoji] || 0}</span>
+            <button class="reaction-btn ${myReaction === emoji ? 'active' : ''}" data-feed-index="${i}" data-emoji="${emoji}">
+              ${emoji} <span>${myReaction === emoji ? 1 : 0}</span>
             </button>
           `).join('')}
         </div>
@@ -1165,8 +1326,9 @@ function renderTeamFeed() {
     btn.addEventListener('click', () => {
       const idx = btn.dataset.feedIndex;
       const emoji = btn.dataset.emoji;
-      if (!state.teamFeedReactions[idx]) state.teamFeedReactions[idx] = {};
-      state.teamFeedReactions[idx][emoji] = (state.teamFeedReactions[idx][emoji] || 0) + 1;
+      // Exactly one reaction per person per post: picking the same emoji
+      // again clears it, picking a different one switches to it.
+      state.teamFeedReactions[idx] = state.teamFeedReactions[idx] === emoji ? undefined : emoji;
       SFX.tap();
       saveState();
       renderTeamFeed();
@@ -1174,21 +1336,44 @@ function renderTeamFeed() {
   });
 }
 
-function renderTeamBattle() {
-  const yourTeamFruit = MOCK_TEAM_BATTLE[0].fruit + state.fruitCount; // "Rooted" is your team
-  const rows = [
-    { team: 'Rooted', fruit: yourTeamFruit, isYours: true },
-    ...MOCK_TEAM_BATTLE.slice(1)
-  ].sort((a, b) => b.fruit - a.fruit);
+/* ---------------- Create / Join / Leave team ---------------- */
+el('createTeamOpenBtn').addEventListener('click', () => {
+  el('createTeamNameInput').value = '';
+  el('teamModal').hidden = true; // avoid two modals stacking at the same z-index
+  el('createTeamModal').hidden = false;
+});
+el('cancelCreateTeamBtn').addEventListener('click', () => {
+  el('createTeamModal').hidden = true;
+  el('teamModal').hidden = false;
+});
 
-  el('teamBattleList').innerHTML = rows.map((r, i) => `
-    <div class="ranking-row ${r.isYours ? 'is-you' : ''}">
-      <span class="ranking-rank">#${i + 1}</span>
-      <span class="ranking-name">${r.team}${r.isYours ? ' (You)' : ''}</span>
-      <span class="ranking-fp">🍎 ${r.fruit}</span>
-    </div>
-  `).join('');
-}
+el('confirmCreateTeamBtn').addEventListener('click', () => {
+  const TEAM_COST = 500;
+  const name = el('createTeamNameInput').value.trim().slice(0, 24);
+  if (!name) { showToast('Give your team a name first.', 'warning'); return; }
+  if (state.faithPoints < TEAM_COST) {
+    showToast(`Creating a team costs ${TEAM_COST} FP — you have ${Math.floor(state.faithPoints)}.`, 'warning');
+    return;
+  }
+  state.faithPoints -= TEAM_COST;
+  const members = [makeMockMember(MEMBER_NAME_POOL[4]), makeMockMember(MEMBER_NAME_POOL[5]), makeMockMember(MEMBER_NAME_POOL[6])];
+  const requests = [{ id: 'r_' + Math.random().toString(36).slice(2, 9), name: REQUEST_NAME_POOL[0] }];
+  state.team = { name, isOwner: true, leaderName: null, members, requests };
+  el('createTeamModal').hidden = true;
+  el('teamModal').hidden = false;
+  SFX.badge();
+  showToast(`${name} created for ${TEAM_COST} FP! You're the team leader now.`, 'success');
+  render();
+  renderTeamModal();
+});
+
+el('leaveTeamBtn2').addEventListener('click', () => {
+  if (!confirm(`Leave ${state.team.name}? ${state.team.isOwner ? 'As the creator, you can recreate a new team later for another 500 FP.' : ''}`)) return;
+  state.team = null;
+  saveState();
+  el('teamModal').hidden = true;
+  showToast('You left the team.', 'info');
+});
 
 /* ---------------- Seasonal / limited-time events ---------------- */
 // Events are no longer automatic-by-date — a Super Admin has to

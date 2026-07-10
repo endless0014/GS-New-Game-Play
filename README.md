@@ -2,7 +2,25 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
-## Admin Dashboard: custom FP amounts, chart fix, Super Admin tier, manual events (latest update)
+## Team feature rebuilt as its own bottom-nav modal (latest update)
+
+**1. Team moved out of Ranking, into its own bottom-nav button.** Tapping "Team" opens a dedicated modal (same pattern as tapping the tree opens Daily Tasks) rather than living inside the Ranking tab. Ranking now shows pure leaderboards only (Individual + Team), with no roster/management clutter.
+
+**2. Leader capabilities, all inside the Team modal:**
+- **Kick** — remove a member from your team (confirmation required)
+- **Approve / Decline** join requests, in their own "Requests" tab (leader-only, hidden entirely for regular members)
+- **Buzz** — a task-aware reminder. It checks each member's daily checklist (Water/Prune/Fertilize/Prayer/Bible/Devotion) and names the *specific* tasks they haven't done yet ("Grace M. still hasn't done: 💧 Water, 🙏 Prayer") rather than a generic nag — verified this message updates correctly per member. If someone's already done everything, it offers to send encouragement instead.
+- **See task completion per member** — every roster card shows a "X/6 tasks done today" line plus a row of colored pills (done/pending) for each task.
+
+**3. Team name is now front and center in the modal** — a large "🌳 [Team Name]" heading at the top, with a subtitle showing either "You are the team leader" or "Led by [name]" depending on your role on the team.
+
+**4. Fixed the reaction buttons** (the unlabeled 🔥🙏👏 row under the team feed): they're reactions to a teammate's activity post, and are now **limited to exactly one reaction per person per post** — clicking a different emoji switches your reaction, clicking your active one again clears it. Verified this doesn't just keep incrementing a shared counter like it used to.
+
+**5. Leaderboard (Ranking tab) now has both Individual and Team views** — Team ranking shows sample teams by fruit collected, and your own team (once you've created or joined one) appears and updates live as you collect fruit; without a team, it shows a note pointing you to the Team tab instead of an empty board.
+
+**A real bug caught during testing**: opening Create Team (or Buzz) while the Team modal was open behind it caused the two modals to fight over the same stacking layer, making the underlying modal intercept clicks meant for the one on top. Fixed by hiding the parent modal while a nested one is open and restoring it afterward — verified the click-through no longer happens.
+
+## Admin Dashboard: custom FP amounts, chart fix, Super Admin tier, manual events
 
 **1. Custom FP amount modal** — the "+FP" button now opens a small modal with a number input (defaults to 50, but editable to anything) instead of always adding a fixed +50.
 

@@ -348,7 +348,7 @@
     <div class="card-head"><h3>🏆 Leaderboard</h3></div>
     <div class="ranking-view-toggle">
       <button class="chip active" id="rankingIndividualBtn">Individual</button>
-      <button class="chip" id="rankingTeamBtn">My Team</button>
+      <button class="chip" id="rankingTeamBtn">Teams</button>
     </div>
 
     <div id="individualRankingPanel">
@@ -357,29 +357,8 @@
     </div>
 
     <div id="teamRankingPanel" hidden>
-      <div id="noTeamPanel">
-        <p class="card-sub">You're not on a team yet. Create your own or join one below.</p>
-        <button class="btn" id="createTeamOpenBtn" style="width:100%;">🏗️ Create a Team (500 FP)</button>
-
-        <h4 class="analytics-subhead">Join an existing team</h4>
-        <div id="joinableTeamsList"></div>
-      </div>
-
-      <div id="hasTeamPanel" hidden>
-        <div class="my-team-header">
-          <span id="myTeamName">—</span>
-          <button class="btn secondary" id="leaveTeamBtn2">Leave Team</button>
-        </div>
-
-        <h4 class="analytics-subhead">Your team</h4>
-        <div id="teamRosterList"></div>
-
-        <h4 class="analytics-subhead">Team feed</h4>
-        <div id="teamFeedList"></div>
-
-        <h4 class="analytics-subhead">🏆 Weekly team battle (by fruit)</h4>
-        <div id="teamBattleList"></div>
-      </div>
+      <p class="card-sub" id="teamRankingNote">Sample team leaderboard, ranked by fruit collected this week.</p>
+      <div id="teamBattleList"></div>
     </div>
   </section>
 
@@ -459,6 +438,7 @@
   <button class="bottom-nav-item active" data-tab="home"><span class="bn-icon">🌱</span><span>Home</span></button>
   <button class="bottom-nav-item" data-tab="tasks"><span class="bn-icon">✅</span><span>Tasks</span></button>
   <button class="bottom-nav-item" data-tab="ranking"><span class="bn-icon">🏆</span><span>Ranking</span></button>
+  <button class="bottom-nav-item" id="teamNavBtn"><span class="bn-icon">🧑‍🤝‍🧑</span><span>Team</span></button>
   <button class="bottom-nav-item" data-tab="profile"><span class="bn-icon">👤</span><span>Profile</span></button>
 </nav>
 
@@ -560,6 +540,63 @@
     <input type="text" id="createTeamNameInput" class="admin-search" placeholder="Team name…" maxlength="24" />
     <button class="btn" id="confirmCreateTeamBtn" style="width:100%;margin-top:0.9rem;">Create Team (500 FP)</button>
     <button class="btn secondary" id="cancelCreateTeamBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
+<!-- My Team modal -->
+<div class="modal" id="teamModal" hidden>
+  <div class="modal-content team-modal-content">
+    <button class="modal-close-x" id="closeTeamModalBtn" aria-label="Close">&times;</button>
+
+    <!-- No team yet: create or join -->
+    <div id="noTeamPanel">
+      <h2>🧑‍🤝‍🧑 Team</h2>
+      <p class="card-sub">You're not on a team yet. Create your own or request to join one below.</p>
+      <button class="btn" id="createTeamOpenBtn" style="width:100%;">🏗️ Create a Team (500 FP)</button>
+
+      <h4 class="analytics-subhead">Join an existing team</h4>
+      <div id="joinableTeamsList"></div>
+    </div>
+
+    <!-- Has a team -->
+    <div id="hasTeamPanel" hidden>
+      <div class="team-modal-header">
+        <h2 id="teamModalName">🌳 Team Name</h2>
+        <p class="team-modal-subtitle" id="teamModalSubtitle"></p>
+      </div>
+
+      <div class="team-tabs">
+        <button class="chip active" data-team-tab="roster">Roster</button>
+        <button class="chip" data-team-tab="requests" id="teamRequestsTabBtn" hidden>Requests</button>
+        <button class="chip" data-team-tab="feed">Feed</button>
+      </div>
+
+      <div id="teamRosterPanel">
+        <div id="teamRosterList"></div>
+      </div>
+
+      <div id="teamRequestsPanel" hidden>
+        <p class="card-sub">People asking to join your team.</p>
+        <div id="teamRequestsList"></div>
+        <p class="empty-state" id="teamRequestsEmpty" hidden>No pending requests.</p>
+      </div>
+
+      <div id="teamFeedPanel" hidden>
+        <div id="teamFeedList"></div>
+      </div>
+
+      <button class="btn secondary" id="leaveTeamBtn2" style="width:100%;margin-top:1rem;">Leave Team</button>
+    </div>
+  </div>
+</div>
+
+<!-- Buzz / Notify modal -->
+<div class="modal" id="buzzModal" hidden>
+  <div class="modal-content">
+    <h2 id="buzzModalTitle">Notify Member</h2>
+    <p class="card-sub" id="buzzModalBody"></p>
+    <button class="btn" id="sendBuzzBtn" style="width:100%;margin-top:0.7rem;">Send Reminder</button>
+    <button class="btn secondary" id="cancelBuzzBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
   </div>
 </div>
 
