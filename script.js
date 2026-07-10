@@ -4,6 +4,34 @@
    adjusted without hunting through logic.
    ============================================================ */
 
+// Simple emoji-based avatars — no image upload needed, works fully offline.
+// Each mock player/teammate gets one deterministically (by name), so it
+// stays the same across re-renders instead of flickering between options.
+const AVATAR_OPTIONS = [
+  { id: 'lion',       emoji: '🦁', bg: '#ffe3b0' },
+  { id: 'fox',        emoji: '🦊', bg: '#ffd3ba' },
+  { id: 'owl',        emoji: '🦉', bg: '#e8ddc7' },
+  { id: 'turtle',     emoji: '🐢', bg: '#c9f2d3' },
+  { id: 'whale',      emoji: '🐳', bg: '#c9e8f7' },
+  { id: 'butterfly',  emoji: '🦋', bg: '#f0d3f7' },
+  { id: 'bee',        emoji: '🐝', bg: '#fff2b0' },
+  { id: 'dove',       emoji: '🕊️', bg: '#eaf1f8' }
+];
+
+function hashStringToIndex(str, length) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  return hash % length;
+}
+
+function getAvatarForName(name) {
+  return AVATAR_OPTIONS[hashStringToIndex(name, AVATAR_OPTIONS.length)];
+}
+
+function avatarHtml(avatar, size = 36) {
+  return `<span class="avatar-circle" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.55)}px;background:${avatar.bg};">${avatar.emoji}</span>`;
+}
+
 const CONFIG = {
   // Thresholds are scaled so a consistent daily player (logging in, doing
   // faith activities, and tending the tree every day) reaches Old Tree
@@ -238,6 +266,7 @@ function defaultState() {
     profileNameEditsUsed: 0, // 0 = never set; after first set, exactly 1 more edit allowed, then locked
     profileEmail: '',
     dateJoined: getDateKey(), // captured once, the first time this browser ever loads the sandbox
+    avatarId: null,
     soundEnabled: true,
     unlockedBadgeIcon: null, // which badge icon is shown next to the tree name
     badges: {},              // key: badgeId -> true once unlocked
@@ -1053,6 +1082,7 @@ function randomStageLabel() {
 
 /* ---------------- Ranking tab: pure leaderboards (Individual + Team) ---------------- */
 let rankingView = 'individual';
+let rankingMetric = 'fp'; // 'fp' | 'progress'
 
 el('rankingIndividualBtn').addEventListener('click', () => {
   rankingView = 'individual';
@@ -1060,6 +1090,14 @@ el('rankingIndividualBtn').addEventListener('click', () => {
 });
 el('rankingTeamBtn').addEventListener('click', () => {
   rankingView = 'team';
+  renderRanking();
+});
+el('rankingByFpBtn').addEventListener('click', () => {
+  rankingMetric = 'fp';
+  renderRanking();
+});
+el('rankingByProgressBtn').addEventListener('click', () => {
+  rankingMetric = 'progress';
   renderRanking();
 });
 
@@ -1070,57 +1108,85 @@ function renderRanking() {
   el('teamRankingPanel').hidden = rankingView !== 'team';
 
   if (rankingView === 'individual') {
+    el('rankingByFpBtn').classList.toggle('active', rankingMetric === 'fp');
+    el('rankingByProgressBtn').classList.toggle('active', rankingMetric === 'progress');
     renderIndividualRanking();
   } else {
     renderTeamBattle();
   }
 }
 
-function renderIndividualRanking() {
-  const mockScores = MOCK_RANKING_NAMES.map(name => ({
-    name,
-    fp: Math.floor(Math.random() * 600) + 50,
-    progress: Math.floor(Math.random() * CONFIG.fullBloomThreshold)
-  }));
-  mockScores.push({
-    name: 'You',
-    fp: Math.floor(state.totalFpEarned), // lifetime earned, not current spendable balance
-    progress: Math.floor(state.treeProgress),
-    isYou: true
-  });
-  mockScores.sort((a, b) => b.fp - a.fp);
+// Renders a top-3 podium (2nd–1st–3rd, classic layout) followed by a plain
+// numbered list for rank 4 onward. `rows` must already be sorted best-first.
+function renderPodiumAndList(podiumEl, listEl, rows, valueLabelFn) {
+  const top3 = rows.slice(0, 3);
+  const rest = rows.slice(3);
+  const medal = ['🥇', '🥈', '🥉'];
+  // Visual order left-to-right is 2nd, 1st, 3rd, with 1st taller.
+  const order = [1, 0, 2].filter(i => top3[i]);
 
-  el('rankingList').innerHTML = mockScores.map((row, i) => `
-    <div class="ranking-row ${row.isYou ? 'is-you' : ''}">
-      <span class="ranking-rank">#${i + 1}</span>
-      <span class="ranking-name">${row.name}</span>
-      <span class="ranking-stats">
-        <span class="ranking-fp">⭐ ${row.fp} FP</span>
-        <span class="ranking-progress">🌱 ${row.progress}</span>
-      </span>
+  podiumEl.innerHTML = order.map(i => {
+    const row = top3[i];
+    if (!row) return '';
+    return `
+      <div class="podium-slot podium-place-${i + 1} ${row.isYou || row.isYours ? 'is-you' : ''}">
+        <div class="podium-medal">${medal[i]}</div>
+        ${avatarHtml(row.avatar, i === 0 ? 52 : 44)}
+        <div class="podium-name">${escapeHtml(row.name)}</div>
+        <div class="podium-value">${valueLabelFn(row)}</div>
+        <div class="podium-bar podium-bar-${i + 1}"></div>
+      </div>
+    `;
+  }).join('');
+
+  listEl.innerHTML = rest.map((row, i) => `
+    <div class="ranking-row ${row.isYou || row.isYours ? 'is-you' : ''}">
+      <span class="ranking-rank">#${i + 4}</span>
+      ${avatarHtml(row.avatar, 28)}
+      <span class="ranking-name">${escapeHtml(row.name)}</span>
+      <span class="ranking-stats">${valueLabelFn(row)}</span>
     </div>
   `).join('');
 }
 
+function renderIndividualRanking() {
+  const rows = MOCK_RANKING_NAMES.map(name => ({
+    name,
+    avatar: getAvatarForName(name),
+    fp: Math.floor(Math.random() * 600) + 50,
+    progress: Math.floor(Math.random() * CONFIG.fullBloomThreshold)
+  }));
+  rows.push({
+    name: 'You',
+    avatar: state.avatarId ? AVATAR_OPTIONS.find(a => a.id === state.avatarId) : getAvatarForName('You'),
+    fp: Math.floor(state.totalFpEarned), // lifetime earned, not current spendable balance
+    progress: Math.floor(state.treeProgress),
+    isYou: true
+  });
+
+  const key = rankingMetric; // 'fp' | 'progress'
+  rows.sort((a, b) => b[key] - a[key]);
+
+  const valueLabelFn = rankingMetric === 'fp'
+    ? (row => `⭐ ${row.fp} FP`)
+    : (row => `🌱 ${row.progress}`);
+
+  renderPodiumAndList(el('podiumContainer'), el('rankingList'), rows, valueLabelFn);
+}
+
 function renderTeamBattle() {
   const note = el('teamRankingNote');
-  const rows = MOCK_TEAM_BATTLE.map(t => ({ team: t.team, fruit: t.fruit, isYours: false }));
+  const rows = MOCK_TEAM_BATTLE.map(t => ({ name: t.team, avatar: getAvatarForName(t.team), fruit: t.fruit, isYours: false }));
 
   if (state.team) {
-    rows.push({ team: state.team.name, fruit: MOCK_TEAM_BATTLE.length ? 30 + state.fruitCount : state.fruitCount, isYours: true });
+    rows.push({ name: state.team.name, avatar: getAvatarForName(state.team.name), fruit: 30 + state.fruitCount, isYours: true });
     note.textContent = 'Sample team leaderboard, ranked by fruit collected this week.';
   } else {
     note.textContent = 'Join or create a team (see the Team tab below) to appear on this board.';
   }
 
   rows.sort((a, b) => b.fruit - a.fruit);
-  el('teamBattleList').innerHTML = rows.map((r, i) => `
-    <div class="ranking-row ${r.isYours ? 'is-you' : ''}">
-      <span class="ranking-rank">#${i + 1}</span>
-      <span class="ranking-name">${r.team}${r.isYours ? ' (You)' : ''}</span>
-      <span class="ranking-fp">🍎 ${r.fruit}</span>
-    </div>
-  `).join('');
+  renderPodiumAndList(el('teamPodiumContainer'), el('teamBattleList'), rows, row => `🍎 ${row.fruit}`);
 }
 
 /* ---------------- Team modal (opened from the bottom nav) ---------------- */
@@ -1199,7 +1265,7 @@ function renderTeamRoster() {
     return `
       <div class="team-member-row team-member-card">
         <div class="team-member-top">
-          <span class="team-member-name">${escapeHtml(m.name)}</span>
+          <span class="team-member-name">${avatarHtml(getAvatarForName(m.name), 26)} ${escapeHtml(m.name)}</span>
           <span class="team-member-meta">${m.stage} · 🔥${m.streak}</span>
         </div>
         <div class="task-status-note">${doneCount}/${TEAM_TASK_DEFS.length} tasks done today</div>
@@ -1501,6 +1567,33 @@ function renderDateJoined() {
   el('dateJoinedValue').textContent = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+/* ---------------- Avatar picker ---------------- */
+function renderAvatarGrid() {
+  el('avatarGrid').innerHTML = AVATAR_OPTIONS.map(a => `
+    <button class="avatar-option ${state.avatarId === a.id ? 'selected' : ''}" data-avatar-id="${a.id}" style="background:${a.bg};">
+      ${a.emoji}
+    </button>
+  `).join('');
+
+  AVATAR_OPTIONS.forEach(a => {
+    document.querySelector(`.avatar-option[data-avatar-id="${a.id}"]`).addEventListener('click', () => {
+      state.avatarId = a.id;
+      renderAvatarGrid();
+      renderProfileAvatarPreview();
+      saveState();
+      SFX.tap();
+      showToast('Avatar updated.', 'success');
+    });
+  });
+}
+
+function renderProfileAvatarPreview() {
+  const chosen = state.avatarId ? AVATAR_OPTIONS.find(a => a.id === state.avatarId) : null;
+  el('profileAvatarPreview').innerHTML = chosen
+    ? avatarHtml(chosen, 40)
+    : `<span class="avatar-circle avatar-empty" style="width:40px;height:40px;">?</span>`;
+}
+
 el('saveTreeNameBtn').addEventListener('click', () => {
   if (state.treeNameLocked) return; // extra guard beyond the disabled attribute
   const value = el('treeNameInput').value.trim().slice(0, 24);
@@ -1644,6 +1737,8 @@ el('treeNameInput').value = state.treeName || '';
 el('profileNameInput').value = state.profileName || '';
 el('profileEmailInput').value = state.profileEmail || '';
 renderDateJoined();
+renderAvatarGrid();
+renderProfileAvatarPreview();
 renderNameLocks();
 el('soundToggle').checked = state.soundEnabled;
 renderRanking();

@@ -822,11 +822,94 @@ button {
   border-radius: 10px;
 }
 .ranking-row.is-you { background: var(--accent-soft); }
-.ranking-rank { font-weight: 800; width: 1.6rem; color: var(--text-muted); }
+.ranking-rank { font-weight: 800; width: 1.6rem; color: var(--text-muted); flex-shrink: 0; }
 .ranking-name { flex: 1; font-weight: 700; font-size: 0.88rem; }
 .ranking-fp { font-weight: 800; color: var(--accent-strong); font-size: 0.88rem; }
-.ranking-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; }
-.ranking-progress { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; }
+.ranking-stats { font-weight: 800; color: var(--accent-strong); font-size: 0.85rem; white-space: nowrap; }
+
+/* ---------------- Podium (top 3) ---------------- */
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  min-height: 170px;
+}
+
+.podium-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  flex: 1;
+  max-width: 110px;
+}
+
+.podium-medal { font-size: 1.1rem; }
+.podium-name {
+  font-weight: 800;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.podium-value {
+  font-weight: 800;
+  font-size: 0.76rem;
+  color: var(--accent-strong);
+  margin-bottom: 0.3rem;
+}
+
+.podium-bar {
+  width: 100%;
+  border-radius: 10px 10px 0 0;
+  background: var(--accent-gradient);
+}
+.podium-bar-1 { height: 90px; background: linear-gradient(135deg, #ffe08a, #f3c94a); }
+.podium-bar-2 { height: 62px; background: linear-gradient(135deg, #dfe6ec, #b9c4cf); }
+.podium-bar-3 { height: 44px; background: linear-gradient(135deg, #f0c9a0, #d6a06e); }
+
+.podium-slot.is-you .podium-name { color: var(--accent-strong); }
+
+/* ---------------- Avatars ---------------- */
+.avatar-circle {
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.avatar-empty {
+  background: var(--surface-mute);
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.avatar-preview { display: flex; }
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+.avatar-option {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-option.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
 
 /* ---------------- Name lock hints ---------------- */
 .field-label {
@@ -949,6 +1032,11 @@ button {
   gap: 0.5rem;
   margin-bottom: 0.8rem;
 }
+.ranking-metric-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
 
 /* ---------------- Team roster / feed / battle ---------------- */
 /* ---------------- Team modal ---------------- */
@@ -990,7 +1078,7 @@ button {
   margin-bottom: 0.4rem;
   font-size: 0.86rem;
 }
-.team-member-name { font-weight: 700; }
+.team-member-name { font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem; }
 .team-member-meta { color: var(--text-secondary); font-size: 0.8rem; }
 
 .team-member-card {

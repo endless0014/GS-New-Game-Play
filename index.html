@@ -352,12 +352,18 @@
     </div>
 
     <div id="individualRankingPanel">
+      <div class="ranking-metric-toggle">
+        <button class="chip active" id="rankingByFpBtn">⭐ Total FP</button>
+        <button class="chip" id="rankingByProgressBtn">🌱 Tree Progress</button>
+      </div>
       <p class="card-sub">Sample local leaderboard — for demonstration only.</p>
+      <div id="podiumContainer" class="podium"></div>
       <div id="rankingList"></div>
     </div>
 
     <div id="teamRankingPanel" hidden>
       <p class="card-sub" id="teamRankingNote">Sample team leaderboard, ranked by fruit collected this week.</p>
+      <div id="teamPodiumContainer" class="podium"></div>
       <div id="teamBattleList"></div>
     </div>
   </section>
@@ -367,7 +373,10 @@
   <div class="tab-panel" data-tab="profile" hidden>
 
   <section class="card">
-    <div class="card-head"><h3>👤 Profile</h3></div>
+    <div class="card-head">
+      <h3>👤 Profile</h3>
+      <div class="avatar-preview" id="profileAvatarPreview"></div>
+    </div>
 
     <label class="field-label">Name</label>
     <div class="field-with-button">
@@ -385,6 +394,12 @@
 
     <label class="field-label" style="margin-top:0.9rem;">Date Joined</label>
     <p class="date-joined-value" id="dateJoinedValue">—</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h3>🦋 Choose Your Avatar</h3></div>
+    <p class="card-sub">Shown on the leaderboard and in your team roster.</p>
+    <div class="avatar-grid" id="avatarGrid"></div>
   </section>
 
   <section class="card">
@@ -611,6 +626,14 @@
 </div>
 
 <canvas id="celebrationCanvas"></canvas>
+
+<!-- Firebase integration is prepared but NOT active — everything still
+     runs on localStorage. To activate: fill in firebase-integration.js
+     with your real project config, deploy firestore.rules.example, then
+     uncomment the line below. See the "HOW TO ACTIVATE" section at the
+     bottom of firebase-integration.js for the full checklist.
+<script type="module" src="firebase-integration.js"></script>
+-->
 
 <script src="script.js"></script>
 </body>

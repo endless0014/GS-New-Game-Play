@@ -1,0 +1,135 @@
+// ============================================================
+// Growing Seed — Firestore Security Rules (EXAMPLE, NOT DEPLOYED)
+// ============================================================
+//
+// This file is not deployed anywhere by this project. It's a starting
+// point for when firebase-integration.js is actually activated (see the
+// "HOW TO ACTIVATE" section at the bottom of that file).
+//
+// WHY THIS FILE MATTERS: right now, every permission check in the
+// sandbox (Super Admin locks, who can reset progress, who can activate
+// seasonal events) lives only in admin.js / script.js — JavaScript
+// running in the player's own browser. That's fine for a local demo,
+// but it means a technically inclined player could open devtools and
+// simply call the functions directly, bypassing every UI restriction.
+// These rules move that enforcement to the server, where a player
+// cannot override it no matter what they do in their own browser.
+//
+// To use: rename this file to firestore.rules, fill in the two locked
+// Super Admin UIDs below (not emails — Firestore rules check the
+// authenticated UID, so look up each locked account's UID once in the
+// Firebase Console → Authentication tab after they've registered), and
+// deploy with `firebase deploy --only firestore:rules` or paste into
+// Firestore → Rules in the console.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Fill these in with the two locked accounts' actual Firebase
+    // Auth UIDs (not their emails) once they've registered ----
+    function isLockedSuperAdminUid(uid) {
+      return uid in [
+        'REPLACE_WITH_ENDLESSSH0014_UID',
+        'REPLACE_WITH_ENDLESSNOGU_UID'
+      ];
+    }
+
+    function currentUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isSuperAdmin() {
+      return request.auth != null && currentUserRole() == 'superadmin';
+    }
+
+    function isAdminOrAbove() {
+      return request.auth != null &&
+        (currentUserRole() == 'admin' || currentUserRole() == 'superadmin');
+    }
+
+    function isModeratorOrAbove() {
+      return request.auth != null &&
+        (currentUserRole() == 'moderator' || isAdminOrAbove());
+    }
+
+    // ---- users/{uid} ----
+    match /users/{uid} {
+      // Anyone signed in can read player profiles (needed for the
+      // leaderboard, team rosters, etc.)
+      allow read: if request.auth != null;
+
+      // A player can update their own document, EXCEPT the fields that
+      // must go through an admin action or a locked/one-time rule.
+      allow update: if request.auth != null && request.auth.uid == uid
+        && !("role" in request.resource.data.diff(resource.data).affectedKeys())
+        && !("roleLocked" in request.resource.data.diff(resource.data).affectedKeys())
+        // Email is permanently locked once set — no update path at all
+        // once resource.data.email already has a non-empty value.
+        && (resource.data.email == "" || request.resource.data.email == resource.data.email);
+
+      // Role changes: only a Super Admin, and never on a locked account.
+      allow update: if isSuperAdmin()
+        && !isLockedSuperAdminUid(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
+
+      // Resetting another player's progress: Admin or Super Admin only.
+      allow update: if isAdminOrAbove()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['faithPoints', 'treeProgress', 'fruitCount', 'streak']);
+
+      // Creating your own user doc happens once, at registration.
+      allow create: if request.auth != null && request.auth.uid == uid;
+
+      // Deletes should go through the soft-delete pattern (move to
+      // deletedUsers) rather than a hard delete — block direct deletes
+      // here and only allow it via a trusted Cloud Function if you add one.
+      allow delete: if false;
+    }
+
+    // ---- deletedUsers/{uid} — soft-deleted players ----
+    match /deletedUsers/{uid} {
+      allow read, write: if isModeratorOrAbove();
+    }
+
+    // ---- teams/{teamId} ----
+    match /teams/{teamId} {
+      allow read: if request.auth != null;
+
+      // Only the team's leader can add/remove members, approve/decline
+      // requests, or rename the team.
+      allow update: if request.auth != null
+        && resource.data.leaderUid == request.auth.uid;
+
+      // Any signed-in user can create a new team (the 500 FP cost should
+      // ideally be enforced by a Cloud Function that checks the balance
+      // server-side before creating the team, rather than trusting the
+      // client to have actually paid).
+      allow create: if request.auth != null;
+
+      allow delete: if isModeratorOrAbove();
+    }
+
+    // ---- sharedEvent/current — seasonal event toggle ----
+    match /sharedEvent/{docId} {
+      allow read: if true; // every client needs to see if an event is active
+      allow write: if isSuperAdmin(); // only Super Admins can activate/deactivate
+    }
+
+    // ---- teamFeed/{teamId}/posts/{postId} ----
+    match /teamFeed/{teamId}/posts/{postId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+
+      // Reactions: a player may only ever write their OWN entry in the
+      // reactions map (enforces "one reaction per person" server-side,
+      // matching the client-side rule already built into the sandbox).
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['reactions'])
+        && request.resource.data.reactions.diff(resource.data.reactions)
+             .affectedKeys().hasOnly([request.auth.uid]);
+    }
+  }
+}

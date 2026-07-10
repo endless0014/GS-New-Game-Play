@@ -2,6 +2,18 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
+## Podium leaderboards, avatars, and a Firebase scaffold (latest update)
+
+**1. Leaderboard now has two separate rankings**, since spending FP and growing your tree don't move together: a "⭐ Total FP" view and a "🌱 Tree Progress" view, switchable with a sub-toggle above the board. Both apply to the Individual leaderboard; Team stays ranked by fruit collected.
+
+**2. Top 3 now get a real podium** (2nd–1st–3rd layout, gold/silver/bronze bars, medal emoji, avatar) with everyone else listed as plain numbered rows starting at #4 — on both the Individual and Team boards.
+
+**3. Added a simple avatar system** — 8 emoji-based avatars to choose from in Profile (no image upload needed, works fully offline), shown on your podium/leaderboard row and next to your name in your Team roster. Mock players and teammates get a deterministic avatar (based on their name) so it stays consistent instead of flickering between renders.
+
+**4. Re-verified the Team modal end-to-end** after a report that it wasn't responding to clicks. I ran an exhaustive click-through of every single control inside it — open, Create Team, cancel, confirm, all three tabs, Buzz, cancel, Kick, close — against the current code, plus a fresh-visitor simulation (new browser storage, onboarding → straight to Team), and everything responded correctly with zero console errors in every pass. If it's still not responding on your end after grabbing this update, that's worth flagging with specifics (which button, which browser/device) since it's not reproducing here.
+
+**5. Firebase integration scaffold — prepared, not active.** Added `firebase-integration.js` (Auth, Firestore reads/writes, team/event functions mapped to the current data model) and `firestore.rules.example` (security rules mirroring the Super Admin lock and permission matrix). Neither is wired into `index.html` or `admin.html` — both are referenced only in a commented-out `<script>` tag, so nothing changes until you deliberately fill in your project config and uncomment it. Full activation checklist is at the bottom of `firebase-integration.js`. Since I don't have network access to your actual Firebase project, this hasn't been tested against a live backend — only written to match the existing local data shapes; test it against a staging project before production.
+
 ## Team feature rebuilt as its own bottom-nav modal (latest update)
 
 **1. Team moved out of Ranking, into its own bottom-nav button.** Tapping "Team" opens a dedicated modal (same pattern as tapping the tree opens Daily Tasks) rather than living inside the Ranking tab. Ranking now shows pure leaderboards only (Individual + Team), with no roster/management clutter.
