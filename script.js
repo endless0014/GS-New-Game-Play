@@ -4,6 +4,21 @@
    adjusted without hunting through logic.
    ============================================================ */
 
+/* ---------------- Global safety net ----------------
+   Registered first, before anything else in this file runs. If any
+   uncaught error happens anywhere in the app — including while this
+   very script is still executing top-to-bottom — it would otherwise
+   silently stop all remaining code after that point from running,
+   which is exactly what "a button does nothing when clicked" looks
+   like from the outside. This surfaces the real error on screen
+   instead of failing silently, so it's diagnosable. */
+window.addEventListener('error', (event) => {
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c63e38;color:#fff;padding:0.7rem 1rem;font-size:0.72rem;z-index:99999;font-family:monospace;word-break:break-word;';
+  box.textContent = `App error: ${event.message} (line ${event.lineno})`;
+  document.body.appendChild(box);
+});
+
 // Simple emoji-based avatars — no image upload needed, works fully offline.
 // Each mock player/teammate gets one deterministically (by name), so it
 // stays the same across re-renders instead of flickering between options.
@@ -1194,8 +1209,17 @@ const JOINABLE_TEAMS = ['Branching Out', 'Fruitbearers', 'The Vineyard'];
 let activeTeamTab = 'roster';
 
 el('teamNavBtn').addEventListener('click', () => {
-  renderTeamModal();
-  el('teamModal').hidden = false;
+  // Defensive wrapper: if anything inside renderTeamModal() throws (for any
+  // reason, on any device), the modal still opens and the actual error
+  // becomes visible instead of the button silently appearing to do nothing.
+  try {
+    renderTeamModal();
+    el('teamModal').hidden = false;
+  } catch (err) {
+    console.error('Team modal failed to render:', err);
+    el('teamModal').hidden = false;
+    showToast('Something went wrong opening Team — please reload the page.', 'error');
+  }
 });
 el('closeTeamModalBtn').addEventListener('click', () => { el('teamModal').hidden = true; });
 
