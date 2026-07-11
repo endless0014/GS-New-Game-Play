@@ -290,7 +290,8 @@ function defaultState() {
     gospelShareCount: 0,
     loginCyclesCompleted: 0, // incremented each time a 7-day login cycle finishes
     teamFeedReactions: {},   // key: feed item index -> the emoji THIS player reacted with (only one per item)
-    team: null               // null | { name, isOwner, leaderName, members: [...], requests: [...] }
+    team: null,              // null | { name, isOwner, leaderName, members: [...], requests: [...] }
+    teamInvitations: [{ id: 'inv_seed_1', teamName: 'The Vineyard', inviterName: 'Isaac R.' }]
   };
 }
 
@@ -1206,7 +1207,7 @@ function renderTeamBattle() {
 
 /* ---------------- Team modal (opened from the bottom nav) ---------------- */
 const JOINABLE_TEAMS = ['Branching Out', 'Fruitbearers', 'The Vineyard'];
-let activeTeamTab = 'roster';
+let activeTeamTab = 'feed';
 
 el('teamNavBtn').addEventListener('click', () => {
   // Defensive wrapper: if anything inside renderTeamModal() throws (for any
@@ -1229,53 +1230,110 @@ function renderTeamModal() {
   el('hasTeamPanel').hidden = !hasTeam;
 
   if (!hasTeam) {
+    renderTeamInvitations();
+
     el('joinableTeamsList').innerHTML = JOINABLE_TEAMS.map(name => `
       <div class="team-member-row">
         <span class="team-member-name">🌳 ${name}</span>
-        <button class="btn secondary" id="join-team-${name.replace(/\s+/g, '-')}" style="padding:0.4rem 0.8rem;font-size:0.78rem;">Request to Join</button>
+        <button class="btn secondary join-team-btn" data-team-name="${escapeHtml(name)}" style="padding:0.4rem 0.8rem;font-size:0.78rem;">Request to Join</button>
       </div>
     `).join('');
-    JOINABLE_TEAMS.forEach(name => {
-      const btnId = `join-team-${name.replace(/\s+/g, '-')}`;
-      el(btnId).addEventListener('click', () => {
-        const members = [makeMockMember(MEMBER_NAME_POOL[0]), makeMockMember(MEMBER_NAME_POOL[1]), makeMockMember(MEMBER_NAME_POOL[2])];
-        state.team = { name, isOwner: false, leaderName: MEMBER_NAME_POOL[3], members, requests: [] };
-        SFX.tap();
-        showToast(`You joined ${name}!`, 'success');
-        saveState();
-        renderTeamModal();
-      });
-    });
     return;
   }
 
-  // Team name is front and center in the modal, per your request — with a
-  // Leader tag when you created it, or the actual leader's name otherwise.
+  // Team name is front and center in the modal — with a Leader tag when
+  // you created it, or the actual leader's name otherwise. Falls back to
+  // a safe default if leaderName is ever missing, instead of printing
+  // the literal word "undefined".
   el('teamModalName').textContent = `🌳 ${state.team.name}`;
   el('teamModalSubtitle').textContent = state.team.isOwner
     ? 'You are the team leader.'
-    : `Led by ${state.team.leaderName}.`;
+    : `Led by ${state.team.leaderName || 'your team leader'}.`;
 
   el('teamRequestsTabBtn').hidden = !state.team.isOwner;
-  if (!state.team.isOwner && activeTeamTab === 'requests') activeTeamTab = 'roster';
+  if (!state.team.isOwner && activeTeamTab === 'requests') activeTeamTab = 'feed';
   switchTeamTab(activeTeamTab);
 
-  renderTeamRoster();
   renderTeamRequests();
   renderTeamFeed();
 }
 
-document.querySelectorAll('.team-tabs .chip').forEach(chip => {
-  chip.addEventListener('click', () => switchTeamTab(chip.dataset.teamTab));
+// Event delegation on the stable parent container, rather than binding a
+// listener to each chip individually — this can't go stale even if the
+// buttons inside were ever re-created, and only needs to be wired once.
+el('teamModal').querySelector('.team-tabs').addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip[data-team-tab]');
+  if (chip) switchTeamTab(chip.dataset.teamTab);
 });
 
 function switchTeamTab(tab) {
   activeTeamTab = tab;
-  document.querySelectorAll('.team-tabs .chip').forEach(c => c.classList.toggle('active', c.dataset.teamTab === tab));
-  el('teamRosterPanel').hidden = tab !== 'roster';
-  el('teamRequestsPanel').hidden = tab !== 'requests';
+  document.querySelectorAll('.team-tabs .chip[data-team-tab]').forEach(c => c.classList.toggle('active', c.dataset.teamTab === tab));
   el('teamFeedPanel').hidden = tab !== 'feed';
+  el('teamRequestsPanel').hidden = tab !== 'requests';
 }
+
+/* ---------------- View Team Members (separate Roster modal) ---------------- */
+el('viewRosterBtn').addEventListener('click', () => {
+  renderTeamRoster();
+  el('teamModal').hidden = true;
+  el('rosterModal').hidden = false;
+});
+el('closeRosterModalBtn').addEventListener('click', () => {
+  el('rosterModal').hidden = true;
+  el('teamModal').hidden = false;
+});
+
+/* ---------------- Team Invitations (leader → user) ---------------- */
+function renderTeamInvitations() {
+  const invitations = state.teamInvitations || [];
+  el('teamInvitationsEmpty').hidden = invitations.length > 0;
+  el('teamInvitationsList').innerHTML = invitations.map(inv => `
+    <div class="team-member-row">
+      <span class="team-member-name">🌳 ${escapeHtml(inv.teamName)}<span class="invite-from"> — invited by ${escapeHtml(inv.inviterName)}</span></span>
+      <div class="team-member-actions">
+        <button class="accept-invite-btn" data-invite-id="${inv.id}">Accept</button>
+        <button class="decline-invite-btn danger-action" data-invite-id="${inv.id}">Decline</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+el('teamInvitationsList').addEventListener('click', (e) => {
+  const acceptBtn = e.target.closest('.accept-invite-btn');
+  const declineBtn = e.target.closest('.decline-invite-btn');
+  if (!acceptBtn && !declineBtn) return;
+
+  const inviteId = (acceptBtn || declineBtn).dataset.inviteId;
+  const invite = state.teamInvitations.find(i => i.id === inviteId);
+  if (!invite) return;
+
+  state.teamInvitations = state.teamInvitations.filter(i => i.id !== inviteId);
+
+  if (acceptBtn) {
+    const members = [makeMockMember(MEMBER_NAME_POOL[0]), makeMockMember(MEMBER_NAME_POOL[1]), makeMockMember(MEMBER_NAME_POOL[2])];
+    state.team = { name: invite.teamName, isOwner: false, leaderName: invite.inviterName, members, requests: [] };
+    SFX.badge();
+    showToast(`You accepted the invitation and joined ${invite.teamName}!`, 'success');
+  } else {
+    showToast(`Declined the invitation to ${invite.teamName}.`, 'info');
+  }
+  saveState();
+  renderTeamModal();
+});
+
+// Request-to-join buttons use the same delegation pattern.
+el('joinableTeamsList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.join-team-btn');
+  if (!btn) return;
+  const name = btn.dataset.teamName;
+  const members = [makeMockMember(MEMBER_NAME_POOL[0]), makeMockMember(MEMBER_NAME_POOL[1]), makeMockMember(MEMBER_NAME_POOL[2])];
+  state.team = { name, isOwner: false, leaderName: MEMBER_NAME_POOL[3], members, requests: [] };
+  SFX.tap();
+  showToast(`You joined ${name}!`, 'success');
+  saveState();
+  renderTeamModal();
+});
 
 function renderTeamRoster() {
   const isOwner = state.team.isOwner;

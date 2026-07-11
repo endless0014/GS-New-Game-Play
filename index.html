@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Growing Seed — Gameplay Sandbox</title>
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="style.css?v=20260710-3" />
 </head>
 <body>
 
@@ -563,13 +563,20 @@
   <div class="modal-content team-modal-content">
     <button class="modal-close-x" id="closeTeamModalBtn" aria-label="Close">&times;</button>
 
-    <!-- No team yet: create or join -->
+    <!-- No team yet: invitations first, then create or join -->
     <div id="noTeamPanel">
       <h2>🧑‍🤝‍🧑 Team</h2>
-      <p class="card-sub">You're not on a team yet. Create your own or request to join one below.</p>
+
+      <div id="teamInvitationsSection">
+        <h4 class="analytics-subhead">Invitations</h4>
+        <div id="teamInvitationsList"></div>
+        <p class="empty-state" id="teamInvitationsEmpty" hidden>No pending invitations.</p>
+      </div>
+
+      <h4 class="analytics-subhead">Start your own</h4>
       <button class="btn" id="createTeamOpenBtn" style="width:100%;">🏗️ Create a Team (500 FP)</button>
 
-      <h4 class="analytics-subhead">Join an existing team</h4>
+      <h4 class="analytics-subhead">Request to join a team</h4>
       <div id="joinableTeamsList"></div>
     </div>
 
@@ -581,13 +588,13 @@
       </div>
 
       <div class="team-tabs">
-        <button class="chip active" data-team-tab="roster">Roster</button>
+        <button class="chip active" data-team-tab="feed">💬 Feed</button>
         <button class="chip" data-team-tab="requests" id="teamRequestsTabBtn" hidden>Requests</button>
-        <button class="chip" data-team-tab="feed">Feed</button>
+        <button class="btn secondary" id="viewRosterBtn" style="padding:0.45rem 0.8rem;font-size:0.8rem;">👥 View Team Members</button>
       </div>
 
-      <div id="teamRosterPanel">
-        <div id="teamRosterList"></div>
+      <div id="teamFeedPanel">
+        <div id="teamFeedList"></div>
       </div>
 
       <div id="teamRequestsPanel" hidden>
@@ -596,13 +603,19 @@
         <p class="empty-state" id="teamRequestsEmpty" hidden>No pending requests.</p>
       </div>
 
-      <div id="teamFeedPanel" hidden>
-        <div id="teamFeedList"></div>
-      </div>
-
       <button class="btn secondary" id="leaveTeamBtn2" style="width:100%;margin-top:1rem;">Leave Team</button>
     </div>
   </div>
+</div>
+
+<!-- Team Members (Roster) modal — opened from "View Team Members" -->
+<div class="modal" id="rosterModal" hidden>
+  <div class="modal-content team-modal-content">
+    <button class="modal-close-x" id="closeRosterModalBtn" aria-label="Close">&times;</button>
+    <h2>👥 Team Members</h2>
+    <div id="teamRosterList"></div>
+  </div>
+</div>
 </div>
 
 <!-- Buzz / Notify modal -->
@@ -635,6 +648,6 @@
 <script type="module" src="firebase-integration.js"></script>
 -->
 
-<script src="script.js"></script>
+<script src="script.js?v=20260710-3"></script>
 </body>
 </html>

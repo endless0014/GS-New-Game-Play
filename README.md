@@ -2,6 +2,21 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
+## Confirmed bug fix + Team UX rebuild + cache-busting (latest update)
+
+**The "Led by undefined" bug was real and is now fixed.** It turned out to be a stale-cache issue: `script.js`/`style.css`/`admin.js`/`admin.css` had no version identifier, so browsers (and GitHub Pages) could keep serving an older cached copy even after new files were uploaded. Added `?v=20260710-3` to every asset reference in both HTML files — bump this string on future updates to force a fresh fetch. Also hardened the underlying code with a fallback (`state.team.leaderName || 'your team leader'`) so even a bad cache can't print the literal word "undefined" again.
+
+**Team modal UX rebuilt around your feedback:**
+- Opens straight to the **Feed** by default (previously defaulted to Roster).
+- A single **"👥 View Team Members"** button opens the roster in its own focused modal, instead of competing with Feed as an equal-weight tab.
+- Tab clicks (Feed/Requests) now use event delegation on a stable parent container rather than binding each button individually — more robust against any future re-render timing issues.
+
+**New: Team Invitations.** The no-team screen now shows pending invitations from team leaders first, above Create/Join, each with **Accept** / **Decline**. Accepting joins that team immediately (same as a Request-to-Join, just leader-initiated instead of player-initiated). One mock invitation is seeded by default so this is immediately testable.
+
+**Added a global error safety net** (top of `script.js`): any uncaught JavaScript error anywhere in the app now shows as a clear red banner across the top of the screen with the actual error message, instead of silently breaking buttons with no visible symptom — this is what would have made the original report immediately diagnosable if it had been a real code error rather than a caching issue.
+
+Every flow re-verified end-to-end: open Team → see invitation → Accept (leader name correct, no "undefined") → Feed shown by default → View Team Members → Roster modal opens/closes correctly → Decline on a fresh invite → Request-to-Join path also verified → Create Team → Requests tab reachable via the new delegated click handling. Zero console errors throughout.
+
 ## Podium leaderboards, avatars, and a Firebase scaffold (latest update)
 
 **1. Leaderboard now has two separate rankings**, since spending FP and growing your tree don't move together: a "⭐ Total FP" view and a "🌱 Tree Progress" view, switchable with a sub-toggle above the board. Both apply to the Individual leaderboard; Team stays ranked by fruit collected.

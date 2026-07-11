@@ -1079,6 +1079,7 @@ button {
   font-size: 0.86rem;
 }
 .team-member-name { font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem; }
+.invite-from { font-weight: 500; color: var(--text-muted); font-size: 0.78rem; }
 .team-member-meta { color: var(--text-secondary); font-size: 0.8rem; }
 
 .team-member-card {
