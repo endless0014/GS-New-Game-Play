@@ -890,7 +890,21 @@ button {
   font-weight: 800;
 }
 
-.avatar-preview { display: flex; }
+.avatar-preview {
+  display: flex;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.avatar-preview:active { transform: scale(0.94); }
+
+.avatar-modal-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.9rem;
+}
 
 .avatar-grid {
   display: grid;
@@ -903,12 +917,33 @@ button {
   border: 3px solid transparent;
   font-size: 1.5rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.1rem;
+  position: relative;
 }
 .avatar-option.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.avatar-option.locked {
+  opacity: 0.7;
+  filter: grayscale(0.4);
+}
+.avatar-price {
+  font-size: 0.56rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.85);
+  border-radius: 6px;
+  padding: 0.05rem 0.25rem;
+}
+
+.custom-avatar-section {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed rgba(0,0,0,0.12);
 }
 
 /* ---------------- Name lock hints ---------------- */
@@ -990,6 +1025,19 @@ button {
 
 .badge-icon { font-size: 1.6rem; }
 .badge-label { font-size: 0.68rem; font-weight: 700; color: var(--text-secondary); }
+
+.star-badge-tile { grid-column: span 3; flex-direction: row; justify-content: center; gap: 0.6rem; cursor: default; }
+.star-badge-icon { font-size: 1.1rem; letter-spacing: 0.1rem; }
+
+.leader-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #a5590a;
+  background: #fdecd8;
+  border-radius: 999px;
+  padding: 0.08rem 0.4rem;
+  vertical-align: middle;
+}
 
 /* ---------------- Sound toggle switch ---------------- */
 .sound-switch {

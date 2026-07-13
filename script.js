@@ -33,6 +33,13 @@ const AVATAR_OPTIONS = [
   { id: 'dove',       emoji: '🕊️', bg: '#eaf1f8' }
 ];
 
+// The default before anything is purchased — a plain silhouette, not one
+// of the purchasable options.
+const BLANK_AVATAR = { id: null, emoji: '👤', bg: '#e6e6e6' };
+const AVATAR_UNLOCK_COST = 200;
+const CUSTOM_AVATAR_COST = 500;
+const CUSTOM_AVATAR_REQUIRED_STAGE = 'oldTree'; // must have reached this stage at least once
+
 function hashStringToIndex(str, length) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
@@ -45,6 +52,19 @@ function getAvatarForName(name) {
 
 function avatarHtml(avatar, size = 36) {
   return `<span class="avatar-circle" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.55)}px;background:${avatar.bg};">${avatar.emoji}</span>`;
+}
+
+// Resolves what the CURRENT PLAYER's avatar should look like right now —
+// a custom uploaded photo takes priority over a purchased emoji avatar,
+// which takes priority over the blank default. Mock teammates/NPCs never
+// have custom photos, so they keep using avatarHtml()/getAvatarForName()
+// directly rather than this function.
+function currentAvatarHtml(size = 36) {
+  if (state.customAvatarDataUrl) {
+    return `<span class="avatar-circle" style="width:${size}px;height:${size}px;padding:0;overflow:hidden;"><img src="${state.customAvatarDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Your avatar" /></span>`;
+  }
+  const chosen = state.avatarId ? AVATAR_OPTIONS.find(a => a.id === state.avatarId) : null;
+  return avatarHtml(chosen || BLANK_AVATAR, size);
 }
 
 const CONFIG = {
@@ -181,8 +201,19 @@ const CONFIG = {
     { id: 'oldTree',    icon: '🌳', label: 'Full Bloom',        desc: 'Reach Old Tree stage.',               check: s => s.previousStage === 'oldTree' },
     { id: 'allSeeds',   icon: '🌈', label: 'Every Seed',        desc: 'Try all five seed types.',            check: s => new Set(s.seedTypesTried).size >= 5 },
     { id: 'survivor10', icon: '🛡️', label: 'Steadfast',         desc: 'Face down 10 challenges.',            check: s => s.challengesSurvived >= 10 },
-    { id: 'gospel5',    icon: '📢', label: 'Voice of Faith',    desc: 'Share the Gospel 5 times.',           check: s => s.gospelShareCount >= 5 }
+    { id: 'gospel5',    icon: '📢', label: 'Voice of Faith',    desc: 'Share the Gospel 5 times.',           check: s => s.gospelShareCount >= 5 },
+    { id: 'collector',  icon: '🎨', label: 'Collector',         desc: 'Unlock 3 avatars.',                   check: s => (s.unlockedAvatars || []).length >= 3 }
   ],
+
+  // A separate progressive badge — not a one-time unlock like the others
+  // above, but a 1-to-5 star level that fills in as total fruit collected
+  // grows. Rendered as its own special tile in the badge grid.
+  starBadge: {
+    id: 'starLevel',
+    label: 'Faithful Steward',
+    desc: 'Collect fruit to grow your star level.',
+    thresholds: [1, 5, 15, 30, 50] // fruit count needed for star 1 through star 5
+  },
 
   // Seasonal events are no longer scheduled by date here — see
   // getActiveEvent() below, which reads a shared key that only a Super
@@ -282,6 +313,9 @@ function defaultState() {
     profileEmail: '',
     dateJoined: getDateKey(), // captured once, the first time this browser ever loads the sandbox
     avatarId: null,
+    unlockedAvatars: [],       // ids of purchased emoji avatars (200 FP each)
+    customAvatarUnlocked: false, // true once the 500 FP upload feature is purchased (requires Old Tree)
+    customAvatarDataUrl: null, // the actual uploaded photo, once set
     soundEnabled: true,
     unlockedBadgeIcon: null, // which badge icon is shown next to the tree name
     badges: {},              // key: badgeId -> true once unlocked
@@ -299,7 +333,31 @@ function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
-    return { ...defaultState(), ...JSON.parse(raw) };
+    const merged = { ...defaultState(), ...JSON.parse(raw) };
+
+    // Migration guard: an earlier version of the Team feature saved
+    // state.team as a much simpler shape ({ name, isOwner }) without
+    // `members`/`requests`. Loading that old shape into the current code
+    // (which always expects team.members to be an array) would crash the
+    // roster/feed rendering with "Cannot read properties of undefined
+    // (reading 'map')". If a saved team object is missing the fields the
+    // current code depends on, drop it back to null rather than crash —
+    // the player just sees "no team" and can create/join a fresh one.
+    if (merged.team && (!Array.isArray(merged.team.members) || !Array.isArray(merged.team.requests))) {
+      merged.team = null;
+    }
+    if (!Array.isArray(merged.teamInvitations)) {
+      merged.teamInvitations = defaultState().teamInvitations;
+    }
+    if (!Array.isArray(merged.unlockedAvatars)) merged.unlockedAvatars = [];
+    // Backward compatibility: earlier versions let anyone pick an avatar
+    // for free. If a save already has one selected, don't retroactively
+    // re-lock it — treat it as already-owned.
+    if (merged.avatarId && !merged.unlockedAvatars.includes(merged.avatarId)) {
+      merged.unlockedAvatars.push(merged.avatarId);
+    }
+
+    return merged;
   } catch (e) {
     return defaultState();
   }
@@ -1144,10 +1202,11 @@ function renderPodiumAndList(podiumEl, listEl, rows, valueLabelFn) {
   podiumEl.innerHTML = order.map(i => {
     const row = top3[i];
     if (!row) return '';
+    const avatarMarkup = (row.isYou || row.isYours) ? currentAvatarHtml(i === 0 ? 52 : 44) : avatarHtml(row.avatar, i === 0 ? 52 : 44);
     return `
       <div class="podium-slot podium-place-${i + 1} ${row.isYou || row.isYours ? 'is-you' : ''}">
         <div class="podium-medal">${medal[i]}</div>
-        ${avatarHtml(row.avatar, i === 0 ? 52 : 44)}
+        ${avatarMarkup}
         <div class="podium-name">${escapeHtml(row.name)}</div>
         <div class="podium-value">${valueLabelFn(row)}</div>
         <div class="podium-bar podium-bar-${i + 1}"></div>
@@ -1158,7 +1217,7 @@ function renderPodiumAndList(podiumEl, listEl, rows, valueLabelFn) {
   listEl.innerHTML = rest.map((row, i) => `
     <div class="ranking-row ${row.isYou || row.isYours ? 'is-you' : ''}">
       <span class="ranking-rank">#${i + 4}</span>
-      ${avatarHtml(row.avatar, 28)}
+      ${(row.isYou || row.isYours) ? currentAvatarHtml(28) : avatarHtml(row.avatar, 28)}
       <span class="ranking-name">${escapeHtml(row.name)}</span>
       <span class="ranking-stats">${valueLabelFn(row)}</span>
     </div>
@@ -1174,7 +1233,6 @@ function renderIndividualRanking() {
   }));
   rows.push({
     name: 'You',
-    avatar: state.avatarId ? AVATAR_OPTIONS.find(a => a.id === state.avatarId) : getAvatarForName('You'),
     fp: Math.floor(state.totalFpEarned), // lifetime earned, not current spendable balance
     progress: Math.floor(state.treeProgress),
     isYou: true
@@ -1299,6 +1357,16 @@ function renderTeamInvitations() {
   `).join('');
 }
 
+// Builds the member list for a team you've JOINED (not created) — the
+// leader is included as a real roster entry (tagged isLeader) so they can
+// be buzzed just like any other teammate, rather than being an invisible
+// name with no roster row of their own.
+function makeJoinedTeamRoster(leaderName) {
+  const leader = { ...makeMockMember(leaderName), isLeader: true };
+  const peers = [makeMockMember(MEMBER_NAME_POOL[0]), makeMockMember(MEMBER_NAME_POOL[1]), makeMockMember(MEMBER_NAME_POOL[2])];
+  return [leader, ...peers];
+}
+
 el('teamInvitationsList').addEventListener('click', (e) => {
   const acceptBtn = e.target.closest('.accept-invite-btn');
   const declineBtn = e.target.closest('.decline-invite-btn');
@@ -1311,7 +1379,7 @@ el('teamInvitationsList').addEventListener('click', (e) => {
   state.teamInvitations = state.teamInvitations.filter(i => i.id !== inviteId);
 
   if (acceptBtn) {
-    const members = [makeMockMember(MEMBER_NAME_POOL[0]), makeMockMember(MEMBER_NAME_POOL[1]), makeMockMember(MEMBER_NAME_POOL[2])];
+    const members = makeJoinedTeamRoster(invite.inviterName);
     state.team = { name: invite.teamName, isOwner: false, leaderName: invite.inviterName, members, requests: [] };
     SFX.badge();
     showToast(`You accepted the invitation and joined ${invite.teamName}!`, 'success');
@@ -1327,8 +1395,9 @@ el('joinableTeamsList').addEventListener('click', (e) => {
   const btn = e.target.closest('.join-team-btn');
   if (!btn) return;
   const name = btn.dataset.teamName;
-  const members = [makeMockMember(MEMBER_NAME_POOL[0]), makeMockMember(MEMBER_NAME_POOL[1]), makeMockMember(MEMBER_NAME_POOL[2])];
-  state.team = { name, isOwner: false, leaderName: MEMBER_NAME_POOL[3], members, requests: [] };
+  const leaderName = MEMBER_NAME_POOL[3];
+  const members = makeJoinedTeamRoster(leaderName);
+  state.team = { name, isOwner: false, leaderName, members, requests: [] };
   SFX.tap();
   showToast(`You joined ${name}!`, 'success');
   saveState();
@@ -1336,6 +1405,10 @@ el('joinableTeamsList').addEventListener('click', (e) => {
 });
 
 function renderTeamRoster() {
+  if (!state.team || !Array.isArray(state.team.members)) {
+    el('teamRosterList').innerHTML = '<p class="empty-state">No team data available.</p>';
+    return;
+  }
   const isOwner = state.team.isOwner;
   const members = state.team.members;
 
@@ -1344,28 +1417,34 @@ function renderTeamRoster() {
     const taskChecklist = TEAM_TASK_DEFS.map(t => `
       <span class="task-pill ${m.tasks[t.key] ? 'done' : 'pending'}">${t.icon} ${t.label}</span>
     `).join('');
+    const canKick = isOwner && !m.isLeader;
     return `
       <div class="team-member-row team-member-card">
         <div class="team-member-top">
-          <span class="team-member-name">${avatarHtml(getAvatarForName(m.name), 26)} ${escapeHtml(m.name)}</span>
+          <span class="team-member-name">${avatarHtml(getAvatarForName(m.name), 26)} ${escapeHtml(m.name)}${m.isLeader ? ' <span class="leader-tag">Leader</span>' : ''}</span>
           <span class="team-member-meta">${m.stage} · 🔥${m.streak}</span>
         </div>
         <div class="task-status-note">${doneCount}/${TEAM_TASK_DEFS.length} tasks done today</div>
         <div class="task-checklist">${taskChecklist}</div>
-        ${isOwner ? `
-          <div class="team-member-actions">
-            <button class="btn secondary" id="buzz-${m.id}" style="padding:0.4rem 0.7rem;font-size:0.78rem;">🔔 Buzz</button>
-            <button class="btn secondary danger-action" id="kick-${m.id}" style="padding:0.4rem 0.7rem;font-size:0.78rem;">Kick</button>
-          </div>
-        ` : ''}
+        <div class="team-member-actions">
+          <button class="btn secondary" id="buzz-${m.id}" style="padding:0.4rem 0.7rem;font-size:0.78rem;">🔔 Buzz</button>
+          ${canKick ? `<button class="btn secondary danger-action" id="kick-${m.id}" style="padding:0.4rem 0.7rem;font-size:0.78rem;">Kick</button>` : ''}
+        </div>
       </div>
     `;
   }).join('');
 
+  // Buzz is available to everyone, for every teammate (and the leader, if
+  // you're not the leader yourself) — not just leader-to-member anymore.
+  members.forEach(m => {
+    el(`buzz-${m.id}`).addEventListener('click', () => openBuzzModal(m.id));
+  });
+
   if (isOwner) {
     members.forEach(m => {
-      el(`buzz-${m.id}`).addEventListener('click', () => openBuzzModal(m.id));
-      el(`kick-${m.id}`).addEventListener('click', () => {
+      const kickBtn = document.getElementById(`kick-${m.id}`);
+      if (!kickBtn) return;
+      kickBtn.addEventListener('click', () => {
         if (!confirm(`Remove ${m.name} from ${state.team.name}?`)) return;
         state.team.members = state.team.members.filter(x => x.id !== m.id);
         saveState();
@@ -1394,19 +1473,19 @@ function openBuzzModal(memberId) {
   el('buzzModalBody').textContent = incomplete.length
     ? `${m.name} still hasn't done: ${incomplete.map(t => `${t.icon} ${t.label}`).join(', ')}. Send a reminder?`
     : `${m.name} has completed everything today! Send an encouragement instead?`;
-  el('teamModal').hidden = true; // avoid two modals stacking at the same z-index
+  el('rosterModal').hidden = true; // avoid two modals stacking at the same z-index — Buzz is opened from the roster modal
   el('buzzModal').hidden = false;
 }
 el('cancelBuzzBtn').addEventListener('click', () => {
   el('buzzModal').hidden = true;
-  el('teamModal').hidden = false;
+  el('rosterModal').hidden = false;
   pendingBuzzMemberId = null;
 });
 
 el('sendBuzzBtn').addEventListener('click', () => {
   const m = state.team.members.find(x => x.id === pendingBuzzMemberId);
   el('buzzModal').hidden = true;
-  el('teamModal').hidden = false;
+  el('rosterModal').hidden = false;
   if (!m) return;
   const incomplete = TEAM_TASK_DEFS.filter(t => !m.tasks[t.key]);
   SFX.tap();
@@ -1573,10 +1652,20 @@ function checkBadges() {
   renderBadges();
 }
 
+function getStarLevel() {
+  const thresholds = CONFIG.starBadge.thresholds;
+  let level = 0;
+  for (let i = 0; i < thresholds.length; i++) {
+    if (state.fruitCount >= thresholds[i]) level = i + 1;
+  }
+  return level;
+}
+
 function renderBadges() {
   const grid = el('badgeGrid');
   if (!grid) return;
-  grid.innerHTML = CONFIG.badges.map(b => {
+
+  const regularTiles = CONFIG.badges.map(b => {
     const unlocked = !!state.badges[b.id];
     return `
       <button class="badge-tile ${unlocked ? 'unlocked' : 'locked'}" data-badge-icon="${b.icon}" ${unlocked ? '' : 'disabled'} title="${b.desc}">
@@ -1584,9 +1673,24 @@ function renderBadges() {
         <span class="badge-label">${b.label}</span>
       </button>
     `;
-  }).join('');
+  });
 
-  grid.querySelectorAll('.badge-tile.unlocked').forEach(btn => {
+  // Star badge: not unlocked/locked like the others — always visible,
+  // showing current progress as filled vs. empty stars out of 5.
+  const level = getStarLevel();
+  const stars = '⭐'.repeat(level) + '☆'.repeat(5 - level);
+  const nextThreshold = CONFIG.starBadge.thresholds[level]; // undefined once maxed
+  const starTile = `
+    <button class="badge-tile star-badge-tile ${level > 0 ? 'unlocked' : 'locked'}"
+            title="${CONFIG.starBadge.desc}${nextThreshold ? ` Next star at ${nextThreshold} fruit.` : ' Max level reached!'}">
+      <span class="badge-icon star-badge-icon">${stars}</span>
+      <span class="badge-label">${CONFIG.starBadge.label}</span>
+    </button>
+  `;
+
+  grid.innerHTML = regularTiles.join('') + starTile;
+
+  grid.querySelectorAll('.badge-tile.unlocked[data-badge-icon]').forEach(btn => {
     btn.addEventListener('click', () => {
       state.unlockedBadgeIcon = btn.dataset.badgeIcon;
       renderTreeNameDisplay();
@@ -1649,31 +1753,111 @@ function renderDateJoined() {
   el('dateJoinedValue').textContent = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-/* ---------------- Avatar picker ---------------- */
+/* ---------------- Avatar picker (modal-only, locked + purchasable) ---------------- */
+el('profileAvatarPreview').addEventListener('click', () => {
+  renderAvatarModal();
+  el('avatarModal').hidden = false;
+});
+el('closeAvatarModalBtn').addEventListener('click', () => { el('avatarModal').hidden = true; });
+
+function renderAvatarModal() {
+  el('avatarModalPreview').innerHTML = currentAvatarHtml(64);
+  renderAvatarGrid();
+  renderCustomAvatarSection();
+}
+
 function renderAvatarGrid() {
-  el('avatarGrid').innerHTML = AVATAR_OPTIONS.map(a => `
-    <button class="avatar-option ${state.avatarId === a.id ? 'selected' : ''}" data-avatar-id="${a.id}" style="background:${a.bg};">
-      ${a.emoji}
-    </button>
-  `).join('');
+  el('avatarGrid').innerHTML = AVATAR_OPTIONS.map(a => {
+    const unlocked = state.unlockedAvatars.includes(a.id);
+    const selected = state.avatarId === a.id && !state.customAvatarDataUrl;
+    return `
+      <button class="avatar-option ${selected ? 'selected' : ''} ${unlocked ? '' : 'locked'}" data-avatar-id="${a.id}" style="background:${a.bg};">
+        ${unlocked ? a.emoji : '🔒'}
+        ${unlocked ? '' : `<span class="avatar-price">${AVATAR_UNLOCK_COST} FP</span>`}
+      </button>
+    `;
+  }).join('');
 
   AVATAR_OPTIONS.forEach(a => {
     document.querySelector(`.avatar-option[data-avatar-id="${a.id}"]`).addEventListener('click', () => {
+      const unlocked = state.unlockedAvatars.includes(a.id);
+      if (!unlocked) {
+        if (state.faithPoints < AVATAR_UNLOCK_COST) {
+          showToast(`Unlocking this avatar costs ${AVATAR_UNLOCK_COST} FP — you have ${Math.floor(state.faithPoints)}.`, 'warning');
+          return;
+        }
+        if (!confirm(`Unlock this avatar for ${AVATAR_UNLOCK_COST} FP?`)) return;
+        state.faithPoints -= AVATAR_UNLOCK_COST;
+        state.unlockedAvatars.push(a.id);
+        showToast('Avatar unlocked!', 'success');
+      }
       state.avatarId = a.id;
-      renderAvatarGrid();
+      state.customAvatarDataUrl = null; // selecting an emoji avatar overrides any uploaded photo
+      renderAvatarModal();
       renderProfileAvatarPreview();
+      checkBadges(); // e.g. the Collector badge, which depends on unlockedAvatars
       saveState();
       SFX.tap();
-      showToast('Avatar updated.', 'success');
     });
   });
 }
 
+function renderCustomAvatarSection() {
+  const stageOrder = CONFIG.stages.map(s => s.key);
+  const reachedOldTree = stageOrder.indexOf(getCurrentStage().key) >= stageOrder.indexOf(CUSTOM_AVATAR_REQUIRED_STAGE);
+  const statusText = el('customAvatarStatusText');
+  const actionBtn = el('customAvatarActionBtn');
+
+  if (state.customAvatarUnlocked) {
+    statusText.textContent = state.customAvatarDataUrl
+      ? 'Your uploaded photo is your active avatar.'
+      : 'Unlocked — upload a photo to use it as your avatar.';
+    actionBtn.textContent = state.customAvatarDataUrl ? 'Change Photo' : 'Upload Photo';
+    actionBtn.disabled = false;
+  } else if (!reachedOldTree) {
+    statusText.textContent = `Unlocks once your tree reaches Old Tree stage (${CUSTOM_AVATAR_COST} FP).`;
+    actionBtn.textContent = `Unlock for ${CUSTOM_AVATAR_COST} FP`;
+    actionBtn.disabled = true;
+  } else {
+    statusText.textContent = 'Your tree has reached Old Tree — you can unlock photo uploads now.';
+    actionBtn.textContent = `Unlock for ${CUSTOM_AVATAR_COST} FP`;
+    actionBtn.disabled = false;
+  }
+}
+
+el('customAvatarActionBtn').addEventListener('click', () => {
+  if (!state.customAvatarUnlocked) {
+    if (state.faithPoints < CUSTOM_AVATAR_COST) {
+      showToast(`Unlocking photo upload costs ${CUSTOM_AVATAR_COST} FP — you have ${Math.floor(state.faithPoints)}.`, 'warning');
+      return;
+    }
+    if (!confirm(`Unlock photo upload for ${CUSTOM_AVATAR_COST} FP?`)) return;
+    state.faithPoints -= CUSTOM_AVATAR_COST;
+    state.customAvatarUnlocked = true;
+    showToast('Photo upload unlocked!', 'success');
+    saveState();
+    render();
+  }
+  el('customAvatarFileInput').click();
+});
+
+el('customAvatarFileInput').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.customAvatarDataUrl = reader.result;
+    renderAvatarModal();
+    renderProfileAvatarPreview();
+    saveState();
+    SFX.tap();
+    showToast('Photo set as your avatar.', 'success');
+  };
+  reader.readAsDataURL(file);
+});
+
 function renderProfileAvatarPreview() {
-  const chosen = state.avatarId ? AVATAR_OPTIONS.find(a => a.id === state.avatarId) : null;
-  el('profileAvatarPreview').innerHTML = chosen
-    ? avatarHtml(chosen, 40)
-    : `<span class="avatar-circle avatar-empty" style="width:40px;height:40px;">?</span>`;
+  el('profileAvatarPreview').innerHTML = currentAvatarHtml(40);
 }
 
 el('saveTreeNameBtn').addEventListener('click', () => {
@@ -1819,7 +2003,6 @@ el('treeNameInput').value = state.treeName || '';
 el('profileNameInput').value = state.profileName || '';
 el('profileEmailInput').value = state.profileEmail || '';
 renderDateJoined();
-renderAvatarGrid();
 renderProfileAvatarPreview();
 renderNameLocks();
 el('soundToggle').checked = state.soundEnabled;

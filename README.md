@@ -2,6 +2,24 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
+## Crash fix, locked/purchasable avatars, two new badges, peer-to-peer Buzz (latest update)
+
+**Fixed the reported crash** (`Cannot read properties of undefined (reading 'map')` at line 1342). Root cause: an earlier version of the Team feature saved `state.team` in a simpler shape (`{ name, isOwner }`, no `members`/`requests`). Loading that old saved shape into the current code — which always expects `team.members` to be an array — crashed the roster rendering. Fixed with a migration guard in `loadState()` that detects an incompatible saved team object and safely resets it to "no team" instead of crashing, plus a defensive check directly in `renderTeamRoster()` as a second layer of protection. Verified by deliberately reproducing the exact old data shape and confirming it no longer throws.
+
+**1. Avatars rebuilt as locked/purchasable, with a blank default:**
+- Default avatar is now a plain silhouette (👤), not an emoji, until you buy one.
+- The 8 emoji avatars only appear in a modal, opened by tapping your avatar circle in Profile — no more always-visible picker grid.
+- Each avatar costs **200 FP to unlock**, individually. Locked ones show a lock icon and price; tapping one with enough FP prompts to confirm the purchase.
+- **Upload-your-own-photo** is a separate unlock: **500 FP**, and only available once your tree has reached **Old Tree** stage at least once. Verified with a real file upload — deducts exactly 500 FP, stores the photo, and displays it in place of any emoji avatar everywhere (Profile, leaderboard, team roster).
+
+**2. New "Collector" badge** — unlocks once you've purchased 3 avatars.
+
+**3. New progressive star badge ("Faithful Steward")** — not a one-time unlock like the others; shows a live 1-to-5 star fill (⭐⭐⭐☆☆) based on total fruit collected (thresholds at 1/5/15/30/50 fruit), always visible in the badge grid as its own wide tile so you can see progress toward the next star.
+
+**4. Members can now Buzz the team leader and each other, not just leader-to-member.** When you join or accept an invite to a team, the leader is added to your roster as a real, taggable ("Leader") entry — so every teammate, leader included, can be reminded by anyone. Kick remains leader-only and never applies to the leader's own entry. This surfaced (and fixed) a second modal-stacking bug: since the roster moved into its own modal in the last update, the Buzz confirmation was still hiding/showing the wrong parent modal — fixed so it correctly returns to the Roster modal, not the Team modal, after sending.
+
+**Cache-busting bumped to `v=20260713-4`** — as always, do a hard refresh or open in a private window after updating, since browsers can hold onto old JS/CSS otherwise.
+
 ## Confirmed bug fix + Team UX rebuild + cache-busting (latest update)
 
 **The "Led by undefined" bug was real and is now fixed.** It turned out to be a stale-cache issue: `script.js`/`style.css`/`admin.js`/`admin.css` had no version identifier, so browsers (and GitHub Pages) could keep serving an older cached copy even after new files were uploaded. Added `?v=20260710-3` to every asset reference in both HTML files — bump this string on future updates to force a fresh fetch. Also hardened the underlying code with a fallback (`state.team.leaderName || 'your team leader'`) so even a bad cache can't print the literal word "undefined" again.

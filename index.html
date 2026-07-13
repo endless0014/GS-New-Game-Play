@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Growing Seed — Gameplay Sandbox</title>
-<link rel="stylesheet" href="style.css?v=20260710-3" />
+<link rel="stylesheet" href="style.css?v=20260713-4" />
 </head>
 <body>
 
@@ -375,7 +375,7 @@
   <section class="card">
     <div class="card-head">
       <h3>👤 Profile</h3>
-      <div class="avatar-preview" id="profileAvatarPreview"></div>
+      <button class="avatar-preview" id="profileAvatarPreview" aria-label="Change avatar"></button>
     </div>
 
     <label class="field-label">Name</label>
@@ -394,12 +394,6 @@
 
     <label class="field-label" style="margin-top:0.9rem;">Date Joined</label>
     <p class="date-joined-value" id="dateJoinedValue">—</p>
-  </section>
-
-  <section class="card">
-    <div class="card-head"><h3>🦋 Choose Your Avatar</h3></div>
-    <p class="card-sub">Shown on the leaderboard and in your team roster.</p>
-    <div class="avatar-grid" id="avatarGrid"></div>
   </section>
 
   <section class="card">
@@ -616,6 +610,25 @@
     <div id="teamRosterList"></div>
   </div>
 </div>
+
+<!-- Avatar picker modal -->
+<div class="modal" id="avatarModal" hidden>
+  <div class="modal-content">
+    <button class="modal-close-x" id="closeAvatarModalBtn" aria-label="Close">&times;</button>
+    <h2>Choose Your Avatar</h2>
+
+    <div class="avatar-modal-preview" id="avatarModalPreview"></div>
+
+    <p class="card-sub">Tap a locked avatar to unlock it for 200 FP each.</p>
+    <div class="avatar-grid" id="avatarGrid"></div>
+
+    <div class="custom-avatar-section" id="customAvatarSection">
+      <h4 class="analytics-subhead">Upload Your Own Photo</h4>
+      <p class="card-sub" id="customAvatarStatusText"></p>
+      <input type="file" accept="image/*" id="customAvatarFileInput" style="display:none;" />
+      <button class="btn secondary" id="customAvatarActionBtn" style="width:100%;">Unlock for 500 FP</button>
+    </div>
+  </div>
 </div>
 
 <!-- Buzz / Notify modal -->
@@ -648,6 +661,6 @@
 <script type="module" src="firebase-integration.js"></script>
 -->
 
-<script src="script.js?v=20260710-3"></script>
+<script src="script.js?v=20260713-4"></script>
 </body>
 </html>
