@@ -258,6 +258,25 @@
 .view-user-body .vu-row .vu-label { font-size: 0.68rem; color: var(--text-muted); display: block; }
 .view-user-body .vu-row .vu-value { font-weight: 700; font-size: 0.86rem; }
 
+.vu-badges-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.vu-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface-mute);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  opacity: 0.55;
+}
+.vu-badge-row.unlocked { opacity: 1; background: var(--accent-soft); }
+.vu-badge-icon { font-size: 1rem; }
+.vu-badge-label { flex: 1; font-size: 0.8rem; font-weight: 700; }
+.vu-badge-stars { font-size: 0.68rem; color: #d4a017; letter-spacing: 0.03rem; }
+
 /* ---------------- Team actions (Leader / User views) ---------------- */
 .remind-btn { background: #e3edfd !important; color: #2856a5 !important; }
 .request-btn { background: var(--accent-soft) !important; color: var(--accent-strong) !important; }

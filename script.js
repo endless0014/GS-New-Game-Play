@@ -192,28 +192,21 @@ const CONFIG = {
   dailyLoginCompletionBonus: 25,
 
   // ---------------- Badges / achievements ----------------
-  // check(state) returns true once earned. Purely a collection layer —
-  // none of these affect gameplay balance.
+  // Every badge is now a 1-to-5 star progression rather than a single
+  // unlock — metric(state) returns the current count for that badge's
+  // category, and thresholds says how much of that metric each star
+  // needs. A badge is "unlocked" (shown in color, tappable as a sticker)
+  // once it has at least 1 star.
   badges: [
-    { id: 'streak7',    icon: '🔥', label: '7-Day Streak',      desc: 'Log in 7 days in a row.',            check: s => s.loginCyclesCompleted >= 1 },
-    { id: 'firstFruit', icon: '🍎', label: 'First Fruit',       desc: 'Grow your very first fruit.',        check: s => s.fruitCount >= 1 },
-    { id: 'fiveFruit',  icon: '🧺', label: 'Basketful',         desc: 'Collect 5 fruit from one tree.',      check: s => s.fruitCount >= 5 },
-    { id: 'oldTree',    icon: '🌳', label: 'Full Bloom',        desc: 'Reach Old Tree stage.',               check: s => s.previousStage === 'oldTree' },
-    { id: 'allSeeds',   icon: '🌈', label: 'Every Seed',        desc: 'Try all five seed types.',            check: s => new Set(s.seedTypesTried).size >= 5 },
-    { id: 'survivor10', icon: '🛡️', label: 'Steadfast',         desc: 'Face down 10 challenges.',            check: s => s.challengesSurvived >= 10 },
-    { id: 'gospel5',    icon: '📢', label: 'Voice of Faith',    desc: 'Share the Gospel 5 times.',           check: s => s.gospelShareCount >= 5 },
-    { id: 'collector',  icon: '🎨', label: 'Collector',         desc: 'Unlock 3 avatars.',                   check: s => (s.unlockedAvatars || []).length >= 3 }
+    { id: 'streak7',    icon: '🔥', label: '7-Day Streak',   metric: s => s.loginCyclesCompleted,             thresholds: [1, 4, 8, 15, 25] },
+    { id: 'firstFruit', icon: '🍎', label: 'First Fruit',    metric: s => s.fruitCount,                       thresholds: [1, 2, 3, 4, 5] },
+    { id: 'fiveFruit',  icon: '🧺', label: 'Basketful',      metric: s => s.fruitCount,                       thresholds: [5, 10, 20, 35, 50] },
+    { id: 'oldTree',    icon: '🌳', label: 'Full Bloom',     metric: s => s.oldTreeReachedCount || 0,         thresholds: [1, 2, 3, 4, 5] },
+    { id: 'allSeeds',   icon: '🌈', label: 'Every Seed',     metric: s => new Set(s.seedTypesTried).size,     thresholds: [1, 2, 3, 4, 5] },
+    { id: 'survivor10', icon: '🛡️', label: 'Steadfast',      metric: s => s.challengesSurvived,               thresholds: [10, 25, 50, 100, 200] },
+    { id: 'gospel5',    icon: '📢', label: 'Voice of Faith', metric: s => s.gospelShareCount,                 thresholds: [5, 15, 30, 50, 75] },
+    { id: 'collector',  icon: '🎨', label: 'Collector',      metric: s => (s.unlockedAvatars || []).length,   thresholds: [1, 3, 5, 7, 8] }
   ],
-
-  // A separate progressive badge — not a one-time unlock like the others
-  // above, but a 1-to-5 star level that fills in as total fruit collected
-  // grows. Rendered as its own special tile in the badge grid.
-  starBadge: {
-    id: 'starLevel',
-    label: 'Faithful Steward',
-    desc: 'Collect fruit to grow your star level.',
-    thresholds: [1, 5, 15, 30, 50] // fruit count needed for star 1 through star 5
-  },
 
   // Seasonal events are no longer scheduled by date here — see
   // getActiveEvent() below, which reads a shared key that only a Super
@@ -323,6 +316,7 @@ function defaultState() {
     challengesSurvived: 0,   // Fight/Endure resolved (not Give Up)
     gospelShareCount: 0,
     loginCyclesCompleted: 0, // incremented each time a 7-day login cycle finishes
+    oldTreeReachedCount: 0,  // incremented each real transition into Old Tree (for the Full Bloom star badge)
     teamFeedReactions: {},   // key: feed item index -> the emoji THIS player reacted with (only one per item)
     team: null,              // null | { name, isOwner, leaderName, members: [...], requests: [...] }
     teamInvitations: [{ id: 'inv_seed_1', teamName: 'The Vineyard', inviterName: 'Isaac R.' }]
@@ -350,6 +344,11 @@ function loadState() {
       merged.teamInvitations = defaultState().teamInvitations;
     }
     if (!Array.isArray(merged.unlockedAvatars)) merged.unlockedAvatars = [];
+    if (merged.badges) {
+      Object.keys(merged.badges).forEach(id => {
+        if (merged.badges[id] === true) merged.badges[id] = 1; // old boolean unlock -> level 1
+      });
+    }
     // Backward compatibility: earlier versions let anyone pick an avatar
     // for free. If a save already has one selected, don't retroactively
     // re-lock it — treat it as already-owned.
@@ -538,6 +537,7 @@ function renderStage() {
       playStageLevelUp();
     }
 
+    if (stage.key === 'oldTree') state.oldTreeReachedCount = (state.oldTreeReachedCount || 0) + 1;
     state.previousStage = stage.key;
   } else if (!document.querySelector(`.tree-stage-img[data-stage="${stage.key}"]`).classList.contains('active')) {
     // First render on load — set instantly, no animation
@@ -1634,61 +1634,62 @@ function renderEventBanner() {
 }
 
 /* ---------------- Badges / achievements ---------------- */
+// Returns 0-5 — how many of this badge's thresholds the current metric
+// value has reached.
+function getBadgeStarLevel(badgeDef, state) {
+  const value = badgeDef.metric(state);
+  let level = 0;
+  for (let i = 0; i < badgeDef.thresholds.length; i++) {
+    if (value >= badgeDef.thresholds[i]) level = i + 1;
+  }
+  return level;
+}
+
 function checkBadges() {
-  let newlyUnlocked = null;
+  let leveledUp = null; // the highest-level-up badge this pass, for the toast/sound
   CONFIG.badges.forEach(b => {
-    if (!state.badges[b.id] && b.check(state)) {
-      state.badges[b.id] = true;
-      newlyUnlocked = b;
+    const newLevel = getBadgeStarLevel(b, state);
+    const previousLevel = state.badges[b.id] || 0;
+    if (newLevel > previousLevel) {
+      state.badges[b.id] = newLevel;
+      leveledUp = { ...b, level: newLevel };
     }
   });
-  if (newlyUnlocked) {
+  if (leveledUp) {
     SFX.badge();
-    showToast(`🏅 Badge unlocked: ${newlyUnlocked.label}!`, 'success');
+    showToast(
+      leveledUp.level >= 5
+        ? `🏅 ${leveledUp.label} maxed out — 5 stars!`
+        : `🏅 ${leveledUp.label} reached ${leveledUp.level}-star level!`,
+      'success'
+    );
     if (!state.unlockedBadgeIcon) {
-      state.unlockedBadgeIcon = newlyUnlocked.icon;
+      state.unlockedBadgeIcon = leveledUp.icon;
     }
   }
   renderBadges();
-}
-
-function getStarLevel() {
-  const thresholds = CONFIG.starBadge.thresholds;
-  let level = 0;
-  for (let i = 0; i < thresholds.length; i++) {
-    if (state.fruitCount >= thresholds[i]) level = i + 1;
-  }
-  return level;
 }
 
 function renderBadges() {
   const grid = el('badgeGrid');
   if (!grid) return;
 
-  const regularTiles = CONFIG.badges.map(b => {
-    const unlocked = !!state.badges[b.id];
+  grid.innerHTML = CONFIG.badges.map(b => {
+    const level = state.badges[b.id] || 0;
+    const unlocked = level > 0;
+    const stars = '⭐'.repeat(level) + '☆'.repeat(5 - level);
+    const nextThreshold = b.thresholds[level]; // undefined once maxed at 5
+    const tooltip = nextThreshold
+      ? `${level}/5 stars — next star at ${nextThreshold}.`
+      : `${level}/5 stars — max level reached!`;
     return `
-      <button class="badge-tile ${unlocked ? 'unlocked' : 'locked'}" data-badge-icon="${b.icon}" ${unlocked ? '' : 'disabled'} title="${b.desc}">
+      <button class="badge-tile ${unlocked ? 'unlocked' : 'locked'}" data-badge-icon="${b.icon}" ${unlocked ? '' : 'disabled'} title="${tooltip}">
         <span class="badge-icon">${unlocked ? b.icon : '🔒'}</span>
         <span class="badge-label">${b.label}</span>
+        <span class="badge-stars">${stars}</span>
       </button>
     `;
-  });
-
-  // Star badge: not unlocked/locked like the others — always visible,
-  // showing current progress as filled vs. empty stars out of 5.
-  const level = getStarLevel();
-  const stars = '⭐'.repeat(level) + '☆'.repeat(5 - level);
-  const nextThreshold = CONFIG.starBadge.thresholds[level]; // undefined once maxed
-  const starTile = `
-    <button class="badge-tile star-badge-tile ${level > 0 ? 'unlocked' : 'locked'}"
-            title="${CONFIG.starBadge.desc}${nextThreshold ? ` Next star at ${nextThreshold} fruit.` : ' Max level reached!'}">
-      <span class="badge-icon star-badge-icon">${stars}</span>
-      <span class="badge-label">${CONFIG.starBadge.label}</span>
-    </button>
-  `;
-
-  grid.innerHTML = regularTiles.join('') + starTile;
+  }).join('');
 
   grid.querySelectorAll('.badge-tile.unlocked[data-badge-icon]').forEach(btn => {
     btn.addEventListener('click', () => {

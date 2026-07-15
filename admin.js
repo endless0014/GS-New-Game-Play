@@ -378,9 +378,60 @@ function resetUser(id) {
   renderAll();
 }
 
+// Mirrors the same 8 badge categories from the real game (script.js's
+// CONFIG.badges), but this dashboard only has mock player stats to work
+// with (fp/streak/fruit/stage), not real per-user counters like
+// loginCyclesCompleted or gospelShareCount. Levels here are deterministic
+// (based on the user's id + existing stats) purely for a believable demo
+// — they don't reflect real player behavior the way the live game's
+// badges do.
+const ADMIN_BADGE_DEFS = [
+  { icon: '🔥', label: '7-Day Streak' },
+  { icon: '🍎', label: 'First Fruit' },
+  { icon: '🧺', label: 'Basketful' },
+  { icon: '🌳', label: 'Full Bloom' },
+  { icon: '🌈', label: 'Every Seed' },
+  { icon: '🛡️', label: 'Steadfast' },
+  { icon: '📢', label: 'Voice of Faith' },
+  { icon: '🎨', label: 'Collector' }
+];
+
+function seededLevel(seedStr, max = 5) {
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) hash = (hash * 31 + seedStr.charCodeAt(i)) >>> 0;
+  return hash % (max + 1);
+}
+
+function mockBadgeLevelsForUser(u) {
+  const stageIndex = STAGE_LABELS.indexOf(u.stage);
+  return [
+    Math.min(5, Math.floor(u.streak / 2)),                          // 7-Day Streak
+    Math.min(5, u.fruit),                                            // First Fruit
+    Math.min(5, Math.floor(u.fruit / 3)),                            // Basketful
+    Math.min(5, Math.max(0, stageIndex - 3)),                        // Full Bloom (Young Tree+)
+    seededLevel(u.id + 'seed'),                                      // Every Seed
+    Math.min(5, Math.floor(u.fp / 150)),                             // Steadfast
+    seededLevel(u.id + 'gospel'),                                    // Voice of Faith
+    seededLevel(u.id + 'collector', 4)                               // Collector
+  ];
+}
+
+function badgeStarsHtml(level) {
+  return '⭐'.repeat(level) + '☆'.repeat(5 - level);
+}
+
 function viewUser(id) {
   const u = state.users.find(x => x.id === id);
   if (!u) return;
+  const levels = mockBadgeLevelsForUser(u);
+  const badgesHtml = ADMIN_BADGE_DEFS.map((b, i) => `
+    <div class="vu-badge-row ${levels[i] > 0 ? 'unlocked' : ''}">
+      <span class="vu-badge-icon">${levels[i] > 0 ? b.icon : '🔒'}</span>
+      <span class="vu-badge-label">${b.label}</span>
+      <span class="vu-badge-stars">${badgeStarsHtml(levels[i])}</span>
+    </div>
+  `).join('');
+
   el('viewUserBody').innerHTML = `
     <div class="vu-row"><span class="vu-label">Name</span><span class="vu-value">${escapeHtml(u.name)}</span></div>
     <div class="vu-row"><span class="vu-label">Email</span><span class="vu-value">${escapeHtml(u.email)}</span></div>
@@ -391,6 +442,12 @@ function viewUser(id) {
     <div class="vu-row"><span class="vu-label">Fruit</span><span class="vu-value">${u.fruit}</span></div>
     <div class="vu-row"><span class="vu-label">Team Leader</span><span class="vu-value">${teamLeaderName(u.teamLeaderId)}</span></div>
   `;
+
+  el('viewUserBody').innerHTML += `
+    <h4 class="analytics-subhead" style="margin-top:0.9rem;">🏅 Badges</h4>
+    <div class="vu-badges-list">${badgesHtml}</div>
+  `;
+
   el('viewUserModal').hidden = false;
 }
 el('closeViewUserBtn').addEventListener('click', () => { el('viewUserModal').hidden = true; });

@@ -2,6 +2,25 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
+## Every badge is now its own 5-star progression (latest update)
+
+The separate "Faithful Steward" star tile is gone — each of the 8 existing badges now has its own 1-to-5 star ladder, exactly per your 7-Day Streak example (1st star = first completed cycle, 2nd star = 4 cycles, and so on):
+
+| Badge | Metric | Star thresholds |
+|---|---|---|
+| 🔥 7-Day Streak | Completed login cycles | 1 / 4 / 8 / 15 / 25 |
+| 🍎 First Fruit | Fruit collected | 1 / 2 / 3 / 4 / 5 |
+| 🧺 Basketful | Fruit collected | 5 / 10 / 20 / 35 / 50 |
+| 🌳 Full Bloom | Times reached Old Tree | 1 / 2 / 3 / 4 / 5 |
+| 🌈 Every Seed | Unique seed types tried | 1 / 2 / 3 / 4 / 5 |
+| 🛡️ Steadfast | Challenges survived | 10 / 25 / 50 / 100 / 200 |
+| 📢 Voice of Faith | Times shared the Gospel | 5 / 15 / 30 / 50 / 75 |
+| 🎨 Collector | Avatars unlocked | 1 / 3 / 5 / 7 / 8 |
+
+Each tile shows a live ⭐⭐⭐☆☆-style row instead of a single lock icon; leveling up (not just first unlock) now plays the badge sound and shows a toast ("🏅 Steadfast reached 3-star level!"). A small migration step converts any old boolean-badge saves to level 1 automatically. Added an `oldTreeReachedCount` counter (incremented on each genuine stage transition into Old Tree) to actually support Full Bloom's 5 tiers, since the old version only ever tracked a single boolean.
+
+**Badges now show up when viewing a user**, in the Admin Dashboard's "View" player action — a compact list of all 8 badges with their star levels. Since the admin dashboard works from its own separate mock player data (not the real game's live counters), those levels are derived deterministically from each mock player's existing stats (FP, streak, fruit, stage) rather than tracking the same real metrics the live game does — clearly a demo approximation, not wired to real per-player history. Happy to extend this same badge display into the Team roster view too if you'd like teammates' badges visible there as well.
+
 ## Crash fix, locked/purchasable avatars, two new badges, peer-to-peer Buzz (latest update)
 
 **Fixed the reported crash** (`Cannot read properties of undefined (reading 'map')` at line 1342). Root cause: an earlier version of the Team feature saved `state.team` in a simpler shape (`{ name, isOwner }`, no `members`/`requests`). Loading that old saved shape into the current code — which always expects `team.members` to be an array — crashed the roster rendering. Fixed with a migration guard in `loadState()` that detects an incompatible saved team object and safely resets it to "no team" instead of crashing, plus a defensive check directly in `renderTeamRoster()` as a second layer of protection. Verified by deliberately reproducing the exact old data shape and confirming it no longer throws.

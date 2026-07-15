@@ -1025,9 +1025,7 @@ button {
 
 .badge-icon { font-size: 1.6rem; }
 .badge-label { font-size: 0.68rem; font-weight: 700; color: var(--text-secondary); }
-
-.star-badge-tile { grid-column: span 3; flex-direction: row; justify-content: center; gap: 0.6rem; cursor: default; }
-.star-badge-icon { font-size: 1.1rem; letter-spacing: 0.1rem; }
+.badge-stars { font-size: 0.62rem; letter-spacing: 0.05rem; color: #d4a017; }
 
 .leader-tag {
   font-size: 0.6rem;
