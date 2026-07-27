@@ -2,6 +2,16 @@
 
 A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
 
+## Modal close-button fix, team size cap, leadership auto-transfer, Feed as its own modal (latest update)
+
+**Fixed: Avatar modal's close button wasn't clickable.** Real bug — `.modal-close-x` uses `position: absolute`, but only `.team-modal-content` (used by Team/Roster) had the matching `position: relative` needed for that to anchor correctly. The Avatar modal used the plain `.modal-content` class, which was missing it, so the close button rendered relative to the full-screen backdrop instead of the modal card — technically present, but not where you'd tap. Fixed by adding `position: relative` to the base `.modal-content` class itself, so every modal's close button works correctly regardless of which content class it uses. Verified with a hit-test at the button's actual screen coordinates.
+
+**Team size capped at 5 total, leader included** (so 1 leader + up to 4 members). Enforced when a leader approves a join request — blocked with a clear "Team is full (5/5)" message once at capacity. Both the Team modal subtitle and the Team Members modal now show a live "X/5 members" count.
+
+**Leadership now automatically transfers to whoever is strongest.** Every mock teammate has a comparable "power" stat; the player's own power is their lifetime FP earned. Checked every time the player earns FP: if a member ever outgrows the current leader (whether that's the player or an NPC), leadership flips to them automatically, with a toast either way ("X has grown stronger and taken over as team leader!" or "You've grown stronger... and are now the team leader!"). Verified both directions — a member overtaking the player-as-leader, and the player overtaking an NPC leader while a regular member.
+
+**Team Feed moved into its own modal**, matching Team Members and Join Requests — the main Team modal is now just the team's identity plus a simple 3-item menu (Feed / Members / Requests, the last only for leaders, with a live pending-request count badge) and Leave Team. No more inline tabs.
+
 ## Every badge is now its own 5-star progression (latest update)
 
 The separate "Faithful Steward" star tile is gone — each of the 8 existing badges now has its own 1-to-5 star ladder, exactly per your 7-Day Streak example (1st star = first completed cycle, 2nd star = 4 cycles, and so on):

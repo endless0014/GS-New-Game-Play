@@ -393,6 +393,7 @@ function periodKeyFor(unit) {
 function earnFp(amount) {
   state.faithPoints += amount;
   state.totalFpEarned += amount;
+  checkLeadershipTransfer();
 }
 
 function applyGrowth(pointsToAdd) {
@@ -1137,6 +1138,10 @@ const TEAM_TASK_DEFS = [
 const MEMBER_NAME_POOL = ['Grace M.', 'Daniel T.', 'Hannah R.', 'Samuel B.', 'Naomi C.', 'Isaac R.', 'Ruth P.', 'Elijah M.'];
 const REQUEST_NAME_POOL = ['Sofia G.', 'Noah B.', 'Mary J.'];
 
+// Total team size cap, leader included — so 1 leader + up to 4 regular
+// members = 5 people max on any team.
+const TEAM_MAX_SIZE = 5;
+
 function makeMockMember(name) {
   const tasks = {};
   TEAM_TASK_DEFS.forEach(t => { tasks[t.key] = Math.random() < 0.6; });
@@ -1145,13 +1150,50 @@ function makeMockMember(name) {
     name,
     stage: randomStageLabel(),
     streak: Math.floor(Math.random() * 12) + 1,
-    tasks
+    tasks,
+    // A comparable "progress power" used to decide leadership — mock
+    // members get a random value in a believable range; the real player's
+    // own power is state.totalFpEarned (see checkLeadershipTransfer()).
+    power: Math.floor(Math.random() * 500) + 50
   };
 }
 
 function randomStageLabel() {
   const stages = CONFIG.stages.map(s => s.label);
   return stages[Math.floor(Math.random() * stages.length)];
+}
+
+// Leadership must always belong to whoever currently has the highest
+// power — if the player's own power ever overtakes the leader's (or vice
+// versa, a member's overtakes the player's while the player is leading),
+// leadership flips automatically. Members already store `power`, so this
+// is just a comparison + flag flip — no need to move anyone in/out of
+// the array, since the leader is always represented as an entry tagged
+// isLeader (see makeJoinedTeamRoster) or implicitly the player (isOwner).
+function checkLeadershipTransfer() {
+  if (!state.team || !Array.isArray(state.team.members) || state.team.members.length === 0) return;
+  const playerPower = state.totalFpEarned;
+
+  if (state.team.isOwner) {
+    let highest = state.team.members[0];
+    state.team.members.forEach(m => { if (m.power > highest.power) highest = m; });
+    if (highest.power > playerPower) {
+      highest.isLeader = true;
+      state.team.isOwner = false;
+      state.team.leaderName = highest.name;
+      showToast(`${highest.name} has grown stronger and taken over as team leader!`, 'info');
+      saveState();
+    }
+  } else {
+    const leaderEntry = state.team.members.find(m => m.isLeader);
+    if (leaderEntry && playerPower > leaderEntry.power) {
+      leaderEntry.isLeader = false;
+      state.team.isOwner = true;
+      state.team.leaderName = null;
+      showToast(`You've grown stronger than ${leaderEntry.name} and are now the team leader!`, 'success');
+      saveState();
+    }
+  }
 }
 
 /* ---------------- Ranking tab: pure leaderboards (Individual + Team) ---------------- */
@@ -1265,13 +1307,13 @@ function renderTeamBattle() {
 
 /* ---------------- Team modal (opened from the bottom nav) ---------------- */
 const JOINABLE_TEAMS = ['Branching Out', 'Fruitbearers', 'The Vineyard'];
-let activeTeamTab = 'feed';
 
 el('teamNavBtn').addEventListener('click', () => {
   // Defensive wrapper: if anything inside renderTeamModal() throws (for any
   // reason, on any device), the modal still opens and the actual error
   // becomes visible instead of the button silently appearing to do nothing.
   try {
+    checkLeadershipTransfer();
     renderTeamModal();
     el('teamModal').hidden = false;
   } catch (err) {
@@ -1303,35 +1345,31 @@ function renderTeamModal() {
   // you created it, or the actual leader's name otherwise. Falls back to
   // a safe default if leaderName is ever missing, instead of printing
   // the literal word "undefined".
+  const totalSize = state.team.members.length + (state.team.isOwner ? 1 : 0);
   el('teamModalName').textContent = `🌳 ${state.team.name}`;
-  el('teamModalSubtitle').textContent = state.team.isOwner
+  el('teamModalSubtitle').textContent = (state.team.isOwner
     ? 'You are the team leader.'
-    : `Led by ${state.team.leaderName || 'your team leader'}.`;
+    : `Led by ${state.team.leaderName || 'your team leader'}.`) + ` (${totalSize}/${TEAM_MAX_SIZE} members)`;
 
-  el('teamRequestsTabBtn').hidden = !state.team.isOwner;
-  if (!state.team.isOwner && activeTeamTab === 'requests') activeTeamTab = 'feed';
-  switchTeamTab(activeTeamTab);
-
-  renderTeamRequests();
-  renderTeamFeed();
+  el('viewRequestsBtn').hidden = !state.team.isOwner;
+  if (state.team.isOwner) {
+    const count = state.team.requests.length;
+    el('teamRequestsCount').textContent = count > 0 ? String(count) : '';
+  }
 }
 
-// Event delegation on the stable parent container, rather than binding a
-// listener to each chip individually — this can't go stale even if the
-// buttons inside were ever re-created, and only needs to be wired once.
-el('teamModal').querySelector('.team-tabs').addEventListener('click', (e) => {
-  const chip = e.target.closest('.chip[data-team-tab]');
-  if (chip) switchTeamTab(chip.dataset.teamTab);
+/* ---------------- Team Feed modal ---------------- */
+el('viewFeedBtn').addEventListener('click', () => {
+  renderTeamFeed();
+  el('teamModal').hidden = true;
+  el('feedModal').hidden = false;
+});
+el('closeFeedModalBtn').addEventListener('click', () => {
+  el('feedModal').hidden = true;
+  el('teamModal').hidden = false;
 });
 
-function switchTeamTab(tab) {
-  activeTeamTab = tab;
-  document.querySelectorAll('.team-tabs .chip[data-team-tab]').forEach(c => c.classList.toggle('active', c.dataset.teamTab === tab));
-  el('teamFeedPanel').hidden = tab !== 'feed';
-  el('teamRequestsPanel').hidden = tab !== 'requests';
-}
-
-/* ---------------- View Team Members (separate Roster modal) ---------------- */
+/* ---------------- Team Members (Roster) modal ---------------- */
 el('viewRosterBtn').addEventListener('click', () => {
   renderTeamRoster();
   el('teamModal').hidden = true;
@@ -1339,6 +1377,17 @@ el('viewRosterBtn').addEventListener('click', () => {
 });
 el('closeRosterModalBtn').addEventListener('click', () => {
   el('rosterModal').hidden = true;
+  el('teamModal').hidden = false;
+});
+
+/* ---------------- Join Requests modal (leader only) ---------------- */
+el('viewRequestsBtn').addEventListener('click', () => {
+  renderTeamRequests();
+  el('teamModal').hidden = true;
+  el('requestsModal').hidden = false;
+});
+el('closeRequestsModalBtn').addEventListener('click', () => {
+  el('requestsModal').hidden = true;
   el('teamModal').hidden = false;
 });
 
@@ -1407,10 +1456,13 @@ el('joinableTeamsList').addEventListener('click', (e) => {
 function renderTeamRoster() {
   if (!state.team || !Array.isArray(state.team.members)) {
     el('teamRosterList').innerHTML = '<p class="empty-state">No team data available.</p>';
+    el('rosterSizeNote').textContent = '';
     return;
   }
   const isOwner = state.team.isOwner;
   const members = state.team.members;
+  const totalSize = members.length + (isOwner ? 1 : 0);
+  el('rosterSizeNote').textContent = `${totalSize}/${TEAM_MAX_SIZE} members (including the leader).`;
 
   el('teamRosterList').innerHTML = members.map(m => {
     const doneCount = TEAM_TASK_DEFS.filter(t => m.tasks[t.key]).length;
@@ -1515,12 +1567,16 @@ function renderTeamRequests() {
 
   requests.forEach(r => {
     el(`approve-${r.id}`).addEventListener('click', () => {
+      const currentSize = state.team.members.length + 1; // +1 for the owner/leader
+      if (currentSize >= TEAM_MAX_SIZE) {
+        showToast(`Team is full (${TEAM_MAX_SIZE}/${TEAM_MAX_SIZE}) — remove someone before approving new members.`, 'warning');
+        return;
+      }
       state.team.members.push(makeMockMember(r.name));
       state.team.requests = state.team.requests.filter(x => x.id !== r.id);
       saveState();
       showToast(`${r.name} joined the team.`, 'success');
       renderTeamRequests();
-      renderTeamRoster();
     });
     el(`decline-${r.id}`).addEventListener('click', () => {
       state.team.requests = state.team.requests.filter(x => x.id !== r.id);

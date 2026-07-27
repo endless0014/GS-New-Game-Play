@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Growing Seed — Gameplay Sandbox</title>
-<link rel="stylesheet" href="style.css?v=20260714-5" />
+<link rel="stylesheet" href="style.css?v=20260717-6" />
 </head>
 <body>
 
@@ -574,27 +574,30 @@
       <div id="joinableTeamsList"></div>
     </div>
 
-    <!-- Has a team -->
+    <!-- Has a team: identity + simple menu, each item opens its own modal -->
     <div id="hasTeamPanel" hidden>
       <div class="team-modal-header">
         <h2 id="teamModalName">🌳 Team Name</h2>
         <p class="team-modal-subtitle" id="teamModalSubtitle"></p>
       </div>
 
-      <div class="team-tabs">
-        <button class="chip active" data-team-tab="feed">💬 Feed</button>
-        <button class="chip" data-team-tab="requests" id="teamRequestsTabBtn" hidden>Requests</button>
-        <button class="btn secondary" id="viewRosterBtn" style="padding:0.45rem 0.8rem;font-size:0.8rem;">👥 View Team Members</button>
-      </div>
-
-      <div id="teamFeedPanel">
-        <div id="teamFeedList"></div>
-      </div>
-
-      <div id="teamRequestsPanel" hidden>
-        <p class="card-sub">People asking to join your team.</p>
-        <div id="teamRequestsList"></div>
-        <p class="empty-state" id="teamRequestsEmpty" hidden>No pending requests.</p>
+      <div class="team-menu">
+        <button class="team-menu-btn" id="viewFeedBtn">
+          <span class="team-menu-icon">💬</span>
+          <span class="team-menu-label">Team Feed</span>
+          <span class="team-menu-arrow">›</span>
+        </button>
+        <button class="team-menu-btn" id="viewRosterBtn">
+          <span class="team-menu-icon">👥</span>
+          <span class="team-menu-label">Team Members</span>
+          <span class="team-menu-arrow">›</span>
+        </button>
+        <button class="team-menu-btn" id="viewRequestsBtn" hidden>
+          <span class="team-menu-icon">📋</span>
+          <span class="team-menu-label">Join Requests</span>
+          <span class="team-menu-count" id="teamRequestsCount"></span>
+          <span class="team-menu-arrow">›</span>
+        </button>
       </div>
 
       <button class="btn secondary" id="leaveTeamBtn2" style="width:100%;margin-top:1rem;">Leave Team</button>
@@ -602,12 +605,33 @@
   </div>
 </div>
 
-<!-- Team Members (Roster) modal — opened from "View Team Members" -->
+<!-- Team Members (Roster) modal — opened from "Team Members" -->
 <div class="modal" id="rosterModal" hidden>
   <div class="modal-content team-modal-content">
     <button class="modal-close-x" id="closeRosterModalBtn" aria-label="Close">&times;</button>
     <h2>👥 Team Members</h2>
+    <p class="card-sub" id="rosterSizeNote"></p>
     <div id="teamRosterList"></div>
+  </div>
+</div>
+
+<!-- Team Feed modal — opened from "Team Feed" -->
+<div class="modal" id="feedModal" hidden>
+  <div class="modal-content team-modal-content">
+    <button class="modal-close-x" id="closeFeedModalBtn" aria-label="Close">&times;</button>
+    <h2>💬 Team Feed</h2>
+    <div id="teamFeedList"></div>
+  </div>
+</div>
+
+<!-- Join Requests modal (leader only) — opened from "Join Requests" -->
+<div class="modal" id="requestsModal" hidden>
+  <div class="modal-content team-modal-content">
+    <button class="modal-close-x" id="closeRequestsModalBtn" aria-label="Close">&times;</button>
+    <h2>📋 Join Requests</h2>
+    <p class="card-sub">People asking to join your team.</p>
+    <div id="teamRequestsList"></div>
+    <p class="empty-state" id="teamRequestsEmpty" hidden>No pending requests.</p>
   </div>
 </div>
 
@@ -661,6 +685,6 @@
 <script type="module" src="firebase-integration.js"></script>
 -->
 
-<script src="script.js?v=20260714-5"></script>
+<script src="script.js?v=20260717-6"></script>
 </body>
 </html>
