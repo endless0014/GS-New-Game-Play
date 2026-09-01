@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Growing Seed — Gameplay Sandbox</title>
-<link rel="stylesheet" href="style.css?v=20260717-6" />
+<link rel="stylesheet" href="style.css?v=20260829-8" />
 </head>
 <body>
 
@@ -314,6 +314,7 @@
     <div class="card-head"><h3>📖 Verse of the Day</h3></div>
     <p class="verse-text" id="verseText">Loading…</p>
     <p class="verse-ref" id="verseRef"></p>
+    <button class="btn secondary share-verse-btn" id="shareVerseBtn">📤 Share to Faith Feed</button>
   </section>
 
   </div><!-- /tab-home -->
@@ -448,6 +449,7 @@
   <button class="bottom-nav-item" data-tab="tasks"><span class="bn-icon">✅</span><span>Tasks</span></button>
   <button class="bottom-nav-item" data-tab="ranking"><span class="bn-icon">🏆</span><span>Ranking</span></button>
   <button class="bottom-nav-item" id="teamNavBtn"><span class="bn-icon">🧑‍🤝‍🧑</span><span>Team</span></button>
+  <button class="bottom-nav-item" id="faithFeedsNavBtn"><span class="bn-icon">🙏</span><span>Feeds</span></button>
   <button class="bottom-nav-item" data-tab="profile"><span class="bn-icon">👤</span><span>Profile</span></button>
 </nav>
 
@@ -583,8 +585,8 @@
 
       <div class="team-menu">
         <button class="team-menu-btn" id="viewFeedBtn">
-          <span class="team-menu-icon">💬</span>
-          <span class="team-menu-label">Team Feed</span>
+          <span class="team-menu-icon">🏃</span>
+          <span class="team-menu-label">Team Activities</span>
           <span class="team-menu-arrow">›</span>
         </button>
         <button class="team-menu-btn" id="viewRosterBtn">
@@ -615,11 +617,11 @@
   </div>
 </div>
 
-<!-- Team Feed modal — opened from "Team Feed" -->
+<!-- Team Activities modal — opened from "Team Activities" -->
 <div class="modal" id="feedModal" hidden>
   <div class="modal-content team-modal-content">
     <button class="modal-close-x" id="closeFeedModalBtn" aria-label="Close">&times;</button>
-    <h2>💬 Team Feed</h2>
+    <h2>🏃 Team Activities</h2>
     <div id="teamFeedList"></div>
   </div>
 </div>
@@ -632,6 +634,22 @@
     <p class="card-sub">People asking to join your team.</p>
     <div id="teamRequestsList"></div>
     <p class="empty-state" id="teamRequestsEmpty" hidden>No pending requests.</p>
+  </div>
+</div>
+
+<!-- Faith Feeds modal — a public feed, separate from Team Activities -->
+<div class="modal" id="faithFeedsModal" hidden>
+  <div class="modal-content team-modal-content">
+    <button class="modal-close-x" id="closeFaithFeedsModalBtn" aria-label="Close">&times;</button>
+    <h2>🙏 Faith Feeds</h2>
+    <p class="card-sub">Share what God is doing in your walk today — everyone here can see and react.</p>
+
+    <div class="compose-box">
+      <textarea id="faithFeedComposeInput" placeholder="Share an update…" maxlength="200" rows="2"></textarea>
+      <button class="btn" id="faithFeedPostBtn" style="width:100%;margin-top:0.5rem;">Post</button>
+    </div>
+
+    <div id="faithFeedList"></div>
   </div>
 </div>
 
@@ -685,6 +703,6 @@
 <script type="module" src="firebase-integration.js"></script>
 -->
 
-<script src="script.js?v=20260717-6"></script>
+<script src="script.js?v=20260829-8"></script>
 </body>
 </html>

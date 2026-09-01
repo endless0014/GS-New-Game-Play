@@ -212,7 +212,7 @@ const CONFIG = {
   // getActiveEvent() below, which reads a shared key that only a Super
   // Admin (from the Admin Dashboard) can turn on, for a duration they choose.
 
-  // ---------------- Mock team feed (sandbox demo data) ----------------
+  // ---------------- Mock team activities (sandbox demo data) ----------------
   // Standalone sample so the Team feed has something to show without a
   // real backend — same spirit as the Admin Dashboard's mock players.
   teamFeedSeed: [
@@ -221,6 +221,24 @@ const CONFIG = {
     { name: 'Hannah R.', action: 'shared the Gospel',        icon: '📢' },
     { name: 'Samuel B.', action: 'grew a fruit!',            icon: '🍎' },
     { name: 'Grace M.',  action: 'kept a 5-day streak',      icon: '🔥' }
+  ],
+
+  // ---------------- Mock Faith Feeds (sandbox demo data) ----------------
+  // A broader, public feed — not limited to your own team — showing a
+  // wider community of players and a fuller mix of activities. Player-
+  // posted updates (manual shares or verse shares) layer on top of this
+  // in state.faithFeedPosts.
+  faithFeedSeed: [
+    { name: 'Naomi C.',   action: 'read the Bible today',        icon: '📘' },
+    { name: 'Isaac R.',   action: 'completed a daily devotion',  icon: '🕊️' },
+    { name: 'Ruth P.',    action: 'attended worship this week',  icon: '🏠' },
+    { name: 'Elijah M.',  action: 'joined a small group',        icon: '🧑‍🤝‍🧑' },
+    { name: 'Sofia G.',   action: 'reached Old Tree — full bloom!', icon: '🌳' },
+    { name: 'Noah B.',    action: 'unlocked the Steadfast badge', icon: '🛡️' },
+    { name: 'Mary J.',    action: 'shared the Gospel with a friend', icon: '📢' },
+    { name: 'Grace M.',   action: 'kept a 10-day streak',        icon: '🔥' },
+    { name: 'Daniel T.',  action: 'grew their first fruit',      icon: '🍎' },
+    { name: 'Hannah R.',  action: 'prayed for their small group', icon: '🙏' }
   ]
 };
 
@@ -319,7 +337,14 @@ function defaultState() {
     oldTreeReachedCount: 0,  // incremented each real transition into Old Tree (for the Full Bloom star badge)
     teamFeedReactions: {},   // key: feed item index -> the emoji THIS player reacted with (only one per item)
     team: null,              // null | { name, isOwner, leaderName, members: [...], requests: [...] }
-    teamInvitations: [{ id: 'inv_seed_1', teamName: 'The Vineyard', inviterName: 'Isaac R.' }]
+    teamInvitations: [{ id: 'inv_seed_1', teamName: 'The Vineyard', inviterName: 'Isaac R.' }],
+
+    // Faith Feeds — a public feed separate from Team Activities. Only
+    // player-posted content lives here; CONFIG.faithFeedSeed supplies the
+    // mock community posts, which never get persisted since they're the
+    // same every time (same pattern as teamFeedSeed).
+    faithFeedPosts: [],        // [{ id, name:'You', icon, text }] — newest first
+    faithFeedReactions: {}     // key: 'seed-{i}' or 'user-{id}' -> the emoji THIS player reacted with
   };
 }
 
@@ -343,6 +368,8 @@ function loadState() {
     if (!Array.isArray(merged.teamInvitations)) {
       merged.teamInvitations = defaultState().teamInvitations;
     }
+    if (!Array.isArray(merged.faithFeedPosts)) merged.faithFeedPosts = [];
+    if (!merged.faithFeedReactions || typeof merged.faithFeedReactions !== 'object') merged.faithFeedReactions = {};
     if (!Array.isArray(merged.unlockedAvatars)) merged.unlockedAvatars = [];
     if (merged.badges) {
       Object.keys(merged.badges).forEach(id => {
@@ -1358,7 +1385,7 @@ function renderTeamModal() {
   }
 }
 
-/* ---------------- Team Feed modal ---------------- */
+/* ---------------- Team Activities modal ---------------- */
 el('viewFeedBtn').addEventListener('click', () => {
   renderTeamFeed();
   el('teamModal').hidden = true;
@@ -1605,7 +1632,7 @@ function renderTeamFeed() {
     `;
   }).join('');
 
-  document.querySelectorAll('.reaction-btn').forEach(btn => {
+  el('teamFeedList').querySelectorAll('.reaction-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = btn.dataset.feedIndex;
       const emoji = btn.dataset.emoji;
@@ -1618,6 +1645,105 @@ function renderTeamFeed() {
     });
   });
 }
+
+/* ---------------- Faith Feeds modal (public feed, opened from the bottom nav) ---------------- */
+el('faithFeedsNavBtn').addEventListener('click', () => {
+  try {
+    renderFaithFeeds();
+    el('faithFeedsModal').hidden = false;
+  } catch (err) {
+    console.error('Faith Feeds failed to render:', err);
+    el('faithFeedsModal').hidden = false;
+    showToast('Something went wrong opening Faith Feeds — please reload the page.', 'error');
+  }
+});
+el('closeFaithFeedsModalBtn').addEventListener('click', () => { el('faithFeedsModal').hidden = true; });
+
+function renderFaithFeeds() {
+  // Combine mock community posts (seed-{i}) with the player's own posts
+  // (user-{id}), player's posts shown first since they're newest.
+  const seedPosts = CONFIG.faithFeedSeed.map((item, i) => ({
+    key: `seed-${i}`,
+    name: item.name,
+    icon: item.icon,
+    text: item.action
+  }));
+  const userPosts = state.faithFeedPosts.map(p => ({
+    key: `user-${p.id}`,
+    name: p.name,
+    icon: p.icon,
+    text: p.text
+  }));
+  const allPosts = [...userPosts, ...seedPosts];
+
+  el('faithFeedList').innerHTML = allPosts.map(post => {
+    const myReaction = state.faithFeedReactions[post.key];
+    const isYou = post.name === 'You';
+    return `
+      <div class="team-feed-item ${isYou ? 'is-your-post' : ''}">
+        <div class="team-feed-text">${post.icon} <strong>${escapeHtml(post.name)}</strong> ${escapeHtml(post.text)}</div>
+        <div class="team-feed-reactions">
+          ${['🔥', '🙏', '👏'].map(emoji => `
+            <button class="reaction-btn ${myReaction === emoji ? 'active' : ''}" data-post-key="${post.key}" data-emoji="${emoji}">
+              ${emoji} <span>${myReaction === emoji ? 1 : 0}</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Scoped to #faithFeedList specifically — Team Activities uses the same
+  // .reaction-btn class in a separate modal, so binding via a bare
+  // document.querySelectorAll would cross-fire between the two feeds.
+  el('faithFeedList').querySelectorAll('.reaction-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.postKey;
+      const emoji = btn.dataset.emoji;
+      state.faithFeedReactions[key] = state.faithFeedReactions[key] === emoji ? undefined : emoji;
+      SFX.tap();
+      saveState();
+      renderFaithFeeds();
+    });
+  });
+}
+
+function postToFaithFeed(text, icon) {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  state.faithFeedPosts.unshift({
+    id: 'p_' + Math.random().toString(36).slice(2, 9),
+    name: 'You',
+    icon: icon || '📝',
+    text: trimmed
+  });
+  saveState();
+}
+
+el('faithFeedPostBtn').addEventListener('click', () => {
+  const input = el('faithFeedComposeInput');
+  const text = input.value.trim();
+  if (!text) {
+    showToast('Write something to share first.', 'warning');
+    return;
+  }
+  postToFaithFeed(text, '📝');
+  input.value = '';
+  SFX.tap();
+  showToast('Posted to Faith Feeds!', 'success');
+  renderFaithFeeds();
+});
+
+// One-tap share of the Verse of the Day, from the Home tab — matches the
+// "share it like other social media" request without needing to open the
+// full Faith Feeds modal first.
+el('shareVerseBtn').addEventListener('click', () => {
+  const verseText = el('verseText').textContent;
+  const verseRef = el('verseRef').textContent;
+  postToFaithFeed(`shared today's verse: ${verseText} ${verseRef}`, '📖');
+  SFX.tap();
+  showToast('Verse shared to Faith Feeds!', 'success');
+});
 
 /* ---------------- Create / Join / Leave team ---------------- */
 el('createTeamOpenBtn').addEventListener('click', () => {
