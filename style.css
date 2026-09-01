@@ -1253,6 +1253,42 @@ button {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
+.faith-feed-comments {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.faith-comment {
+  background: rgba(13, 38, 68, 0.04);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.77rem;
+  line-height: 1.4;
+}
+.faith-comment.empty {
+  color: rgba(13, 38, 68, 0.6);
+  font-style: italic;
+}
+.feed-comment-compose {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+.comment-input {
+  flex: 1;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 999px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+  min-width: 0;
+}
+.comment-btn {
+  white-space: nowrap;
+  padding: 0.48rem 0.8rem;
+  font-size: 0.75rem;
+}
+
 /* ---------------- Celebration canvas (first fruit / old tree) ---------------- */
 #celebrationCanvas {
   position: fixed;

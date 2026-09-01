@@ -343,7 +343,7 @@ function defaultState() {
     // player-posted content lives here; CONFIG.faithFeedSeed supplies the
     // mock community posts, which never get persisted since they're the
     // same every time (same pattern as teamFeedSeed).
-    faithFeedPosts: [],        // [{ id, name:'You', icon, text }] — newest first
+    faithFeedPosts: [],        // [{ id, name:'You', icon, text, comments:[{id, author, text}] }] — newest first
     faithFeedReactions: {}     // key: 'seed-{i}' or 'user-{id}' -> the emoji THIS player reacted with
   };
 }
@@ -1665,19 +1665,22 @@ function renderFaithFeeds() {
     key: `seed-${i}`,
     name: item.name,
     icon: item.icon,
-    text: item.action
+    text: item.action,
+    comments: []
   }));
   const userPosts = state.faithFeedPosts.map(p => ({
     key: `user-${p.id}`,
     name: p.name,
     icon: p.icon,
-    text: p.text
+    text: p.text,
+    comments: Array.isArray(p.comments) ? p.comments : []
   }));
   const allPosts = [...userPosts, ...seedPosts];
 
   el('faithFeedList').innerHTML = allPosts.map(post => {
     const myReaction = state.faithFeedReactions[post.key];
     const isYou = post.name === 'You';
+    const comments = Array.isArray(post.comments) ? post.comments : [];
     return `
       <div class="team-feed-item ${isYou ? 'is-your-post' : ''}">
         <div class="team-feed-text">${post.icon} <strong>${escapeHtml(post.name)}</strong> ${escapeHtml(post.text)}</div>
@@ -1687,6 +1690,15 @@ function renderFaithFeeds() {
               ${emoji} <span>${myReaction === emoji ? 1 : 0}</span>
             </button>
           `).join('')}
+        </div>
+        <div class="faith-feed-comments">
+          ${comments.length ? comments.map(comment => `
+            <div class="faith-comment"><strong>${escapeHtml(comment.author)}</strong> ${escapeHtml(comment.text)}</div>
+          `).join('') : '<div class="faith-comment empty">No comments yet.</div>'}
+        </div>
+        <div class="feed-comment-compose">
+          <input class="comment-input" type="text" maxlength="120" data-post-key="${post.key}" placeholder="Write a comment…" />
+          <button class="btn small comment-btn" data-post-key="${post.key}">Comment</button>
         </div>
       </div>
     `;
@@ -1705,6 +1717,42 @@ function renderFaithFeeds() {
       renderFaithFeeds();
     });
   });
+
+  el('faithFeedList').querySelectorAll('.comment-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.postKey;
+      const input = el('faithFeedList').querySelector(`.comment-input[data-post-key="${key}"]`);
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) {
+        showToast('Write a comment first.', 'warning');
+        return;
+      }
+
+      const targetPost = state.faithFeedPosts.find(p => `user-${p.id}` === key);
+      if (!targetPost) return;
+
+      targetPost.comments = Array.isArray(targetPost.comments) ? targetPost.comments : [];
+      targetPost.comments.push({
+        id: 'c_' + Math.random().toString(36).slice(2, 9),
+        author: 'You',
+        text
+      });
+      input.value = '';
+      SFX.tap();
+      saveState();
+      renderFaithFeeds();
+    });
+  });
+
+  el('faithFeedList').querySelectorAll('.comment-input').forEach(input => {
+    input.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const btn = el('faithFeedList').querySelector(`.comment-btn[data-post-key="${input.dataset.postKey}"]`);
+      if (btn) btn.click();
+    });
+  });
 }
 
 function postToFaithFeed(text, icon) {
@@ -1714,7 +1762,8 @@ function postToFaithFeed(text, icon) {
     id: 'p_' + Math.random().toString(36).slice(2, 9),
     name: 'You',
     icon: icon || '📝',
-    text: trimmed
+    text: trimmed,
+    comments: []
   });
   saveState();
 }
