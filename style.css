@@ -725,6 +725,13 @@ button {
   padding: 0.55rem;
 }
 
+.share-progress-btn {
+  width: 100%;
+  margin-top: 0.55rem;
+  font-size: 0.78rem;
+  padding: 0.55rem;
+}
+
 /* ---------------- Faith Feeds compose box ---------------- */
 .compose-box {
   margin-bottom: 1rem;

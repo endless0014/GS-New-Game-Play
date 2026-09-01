@@ -752,6 +752,7 @@ function switchTab(tab) {
   // The branded header (logos + FP/streak/fruit pills) is redundant on the
   // Profile screen, which has its own identity block (name/email/date joined).
   el('appHeader').hidden = tab === 'profile';
+  if (tab === 'feeds') renderFaithFeeds();
   if (tab === 'ranking') renderRanking();
   if (tab === 'profile') renderBadges();
 }
@@ -1646,18 +1647,16 @@ function renderTeamFeed() {
   });
 }
 
-/* ---------------- Faith Feeds modal (public feed, opened from the bottom nav) ---------------- */
+/* ---------------- Faith Feed tab (public feed, accessed from the bottom nav) ---------------- */
 el('faithFeedsNavBtn').addEventListener('click', () => {
   try {
+    switchTab('feeds');
     renderFaithFeeds();
-    el('faithFeedsModal').hidden = false;
   } catch (err) {
     console.error('Faith Feeds failed to render:', err);
-    el('faithFeedsModal').hidden = false;
     showToast('Something went wrong opening Faith Feeds — please reload the page.', 'error');
   }
 });
-el('closeFaithFeedsModalBtn').addEventListener('click', () => { el('faithFeedsModal').hidden = true; });
 
 function renderFaithFeeds() {
   // Combine mock community posts (seed-{i}) with the player's own posts
@@ -1743,6 +1742,16 @@ el('shareVerseBtn').addEventListener('click', () => {
   postToFaithFeed(`shared today's verse: ${verseText} ${verseRef}`, '📖');
   SFX.tap();
   showToast('Verse shared to Faith Feeds!', 'success');
+});
+
+el('shareProgressBtn').addEventListener('click', () => {
+  const currentStage = getCurrentStage();
+  const nextStage = getNextStageThreshold();
+  const target = nextStage ? nextStage.min : CONFIG.fullBloomThreshold;
+  const progressLabel = nextStage ? `${Math.floor(state.treeProgress - currentStage.min)} / ${target - currentStage.min} to ${nextStage.label}` : `Old Tree • ${state.pointsForFruit}/${CONFIG.pointsPerFruit} to next fruit`;
+  postToFaithFeed(`shared my tree progress: ${currentStage.label} • ${progressLabel} 🌱`, '🌳');
+  SFX.tap();
+  showToast('Tree progress shared to Faith Feeds!', 'success');
 });
 
 /* ---------------- Create / Join / Leave team ---------------- */

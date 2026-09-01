@@ -306,6 +306,7 @@
     <p class="stage-name" id="stageName">Seed</p>
     <div class="progress-track" id="progressTrack"><div class="progress-fill" id="progressFill"></div></div>
     <p class="progress-text" id="progressText">0 / 75 to Germination</p>
+    <button class="btn secondary share-progress-btn" id="shareProgressBtn">📤 Share progress</button>
     <p class="tap-hint">🌿 Tap your tree to tend to it</p>
   </section>
 
@@ -318,6 +319,20 @@
   </section>
 
   </div><!-- /tab-home -->
+
+  <div class="tab-panel" data-tab="feeds" hidden>
+    <section class="card" id="faithFeedSection">
+      <div class="card-head"><h3>🙏 Faith Feed</h3></div>
+      <p class="card-sub">Share what God is doing in your walk today — everyone here can see and react.</p>
+
+      <div class="compose-box">
+        <textarea id="faithFeedComposeInput" placeholder="Share an update…" maxlength="200" rows="2"></textarea>
+        <button class="btn" id="faithFeedPostBtn" style="width:100%;margin-top:0.5rem;">Post</button>
+      </div>
+
+      <div id="faithFeedList"></div>
+    </section>
+  </div><!-- /tab-feeds -->
 
   <div class="tab-panel" data-tab="tasks" hidden>
 
@@ -449,7 +464,7 @@
   <button class="bottom-nav-item" data-tab="tasks"><span class="bn-icon">✅</span><span>Tasks</span></button>
   <button class="bottom-nav-item" data-tab="ranking"><span class="bn-icon">🏆</span><span>Ranking</span></button>
   <button class="bottom-nav-item" id="teamNavBtn"><span class="bn-icon">🧑‍🤝‍🧑</span><span>Team</span></button>
-  <button class="bottom-nav-item" id="faithFeedsNavBtn"><span class="bn-icon">🙏</span><span>Feeds</span></button>
+  <button class="bottom-nav-item" data-tab="feeds" id="faithFeedsNavBtn"><span class="bn-icon">🙏</span><span>Feeds</span></button>
   <button class="bottom-nav-item" data-tab="profile"><span class="bn-icon">👤</span><span>Profile</span></button>
 </nav>
 
@@ -634,22 +649,6 @@
     <p class="card-sub">People asking to join your team.</p>
     <div id="teamRequestsList"></div>
     <p class="empty-state" id="teamRequestsEmpty" hidden>No pending requests.</p>
-  </div>
-</div>
-
-<!-- Faith Feeds modal — a public feed, separate from Team Activities -->
-<div class="modal" id="faithFeedsModal" hidden>
-  <div class="modal-content team-modal-content">
-    <button class="modal-close-x" id="closeFaithFeedsModalBtn" aria-label="Close">&times;</button>
-    <h2>🙏 Faith Feeds</h2>
-    <p class="card-sub">Share what God is doing in your walk today — everyone here can see and react.</p>
-
-    <div class="compose-box">
-      <textarea id="faithFeedComposeInput" placeholder="Share an update…" maxlength="200" rows="2"></textarea>
-      <button class="btn" id="faithFeedPostBtn" style="width:100%;margin-top:0.5rem;">Post</button>
-    </div>
-
-    <div id="faithFeedList"></div>
   </div>
 </div>
 
