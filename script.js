@@ -1500,6 +1500,7 @@ function renderTeamRoster() {
   const members = state.team.members;
   const totalSize = members.length + (isOwner ? 1 : 0);
   el('rosterSizeNote').textContent = `${totalSize}/${TEAM_MAX_SIZE} members (including the leader).`;
+  el('buzzAllTeamBtn').hidden = members.length === 0;
 
   el('teamRosterList').innerHTML = members.map(m => {
     const doneCount = TEAM_TASK_DEFS.filter(t => m.tasks[t.key]).length;
@@ -1552,6 +1553,7 @@ function escapeHtml(str) {
 
 /* ---------------- Buzz / Notify (task-aware reminder) ---------------- */
 let pendingBuzzMemberId = null;
+let pendingBuzzMemberIds = null;
 
 function openBuzzModal(memberId) {
   const m = state.team.members.find(x => x.id === memberId);
@@ -1565,13 +1567,38 @@ function openBuzzModal(memberId) {
   el('rosterModal').hidden = true; // avoid two modals stacking at the same z-index — Buzz is opened from the roster modal
   el('buzzModal').hidden = false;
 }
+function openBuzzAllModal() {
+  const members = state.team && Array.isArray(state.team.members) ? state.team.members : [];
+  if (!members.length) return;
+  pendingBuzzMemberId = null;
+  pendingBuzzMemberIds = members.map(m => m.id);
+  const incompleteCount = members.filter(m => TEAM_TASK_DEFS.some(t => !m.tasks[t.key])).length;
+  el('buzzModalTitle').textContent = 'Notify everyone';
+  el('buzzModalBody').textContent = incompleteCount
+    ? `Send a reminder to all ${members.length} teammates? ${incompleteCount} still have tasks to complete today.`
+    : `Everyone has completed today's tasks. Send encouragement to all ${members.length} teammates?`;
+  el('rosterModal').hidden = true;
+  el('buzzModal').hidden = false;
+}
+el('buzzAllTeamBtn').addEventListener('click', openBuzzAllModal);
 el('cancelBuzzBtn').addEventListener('click', () => {
   el('buzzModal').hidden = true;
   el('rosterModal').hidden = false;
   pendingBuzzMemberId = null;
+  pendingBuzzMemberIds = null;
 });
 
 el('sendBuzzBtn').addEventListener('click', () => {
+  if (pendingBuzzMemberIds) {
+    const members = state.team.members.filter(m => pendingBuzzMemberIds.includes(m.id));
+    el('buzzModal').hidden = true;
+    el('rosterModal').hidden = false;
+    if (!members.length) return;
+    SFX.tap();
+    showToast(`Reminder sent to all ${members.length} teammates.`, 'success');
+    pendingBuzzMemberIds = null;
+    return;
+  }
   const m = state.team.members.find(x => x.id === pendingBuzzMemberId);
   el('buzzModal').hidden = true;
   el('rosterModal').hidden = false;

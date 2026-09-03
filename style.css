@@ -1532,6 +1532,15 @@ button {
 }
 
 #rosterSizeNote { margin: -0.25rem 0 0.9rem; }
+.team-buzz-all-btn {
+  width: 100%;
+  margin: -0.2rem 0 0.85rem;
+  padding: 0.58rem 0.8rem;
+  border: 1px solid rgba(58, 158, 79, 0.2);
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
 #teamRequestsList, #teamInvitationsList, #joinableTeamsList { margin-top: 0.8rem; }
 #teamRequestsList .team-member-row, #teamInvitationsList .team-member-row, #joinableTeamsList .team-member-row { align-items: center; }
 
