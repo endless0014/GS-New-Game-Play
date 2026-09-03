@@ -220,7 +220,8 @@ const CONFIG = {
     { name: 'Daniel T.', action: 'reached Young Tree!',      icon: '🌳' },
     { name: 'Hannah R.', action: 'shared the Gospel',        icon: '📢' },
     { name: 'Samuel B.', action: 'grew a fruit!',            icon: '🍎' },
-    { name: 'Grace M.',  action: 'kept a 5-day streak',      icon: '🔥' }
+    { name: 'Grace M.',  action: 'kept a 5-day streak',      icon: '🔥' },
+    { name: 'Luna',      action: 'shared something in the Faith Feed', icon: '📝' }
   ],
 
   // ---------------- Mock Faith Feeds (sandbox demo data) ----------------
@@ -243,6 +244,7 @@ const CONFIG = {
 };
 
 const STORAGE_KEY = 'growingSeedSandboxState_v1';
+const LOCAL_AUTHOR_ID = 'local-player';
 
 /* ---------------- Sound + haptic feedback ----------------
    Plain Web Audio API tones — no audio files/assets needed, and it works
@@ -336,6 +338,7 @@ function defaultState() {
     loginCyclesCompleted: 0, // incremented each time a 7-day login cycle finishes
     oldTreeReachedCount: 0,  // incremented each real transition into Old Tree (for the Full Bloom star badge)
     teamFeedReactions: {},   // key: feed item index -> the emoji THIS player reacted with (only one per item)
+    teamFeedPosts: [],       // { uid, name, action, icon, createdAt }, newest first
     team: null,              // null | { name, isOwner, leaderName, members: [...], requests: [...] }
     teamInvitations: [{ id: 'inv_seed_1', teamName: 'The Vineyard', inviterName: 'Isaac R.' }],
 
@@ -343,7 +346,7 @@ function defaultState() {
     // player-posted content lives here; CONFIG.faithFeedSeed supplies the
     // mock community posts, which never get persisted since they're the
     // same every time (same pattern as teamFeedSeed).
-    faithFeedPosts: [],        // [{ id, name:'You', icon, text, comments:[{id, author, text}] }] — newest first
+    faithFeedPosts: [],        // [{ id, uid, name, icon, text, createdAt, comments:[] }] — newest first
     faithFeedReactions: {}     // key: 'seed-{i}' or 'user-{id}' -> the emoji THIS player reacted with
   };
 }
@@ -370,6 +373,7 @@ function loadState() {
     }
     if (!Array.isArray(merged.faithFeedPosts)) merged.faithFeedPosts = [];
     if (!merged.faithFeedReactions || typeof merged.faithFeedReactions !== 'object') merged.faithFeedReactions = {};
+    if (!Array.isArray(merged.teamFeedPosts)) merged.teamFeedPosts = [];
     if (!Array.isArray(merged.unlockedAvatars)) merged.unlockedAvatars = [];
     if (merged.badges) {
       Object.keys(merged.badges).forEach(id => {
@@ -858,6 +862,10 @@ function runAction(key) {
     state.challengesSurvived++;
   }
 
+  if (cfg.type === 'task' && isSuccess && delta > 0) {
+    addTeamActivity(`completed ${cfg.label} and grew their tree (+${delta} growth)`, cfg.icon);
+  }
+
   SFX[isGiveUp || !isSuccess ? 'fail' : 'growthSuccess']();
 
   progressTrackEl.classList.remove('growth-success', 'growth-fail');
@@ -1009,6 +1017,7 @@ el('confirmPhotoUploadBtn').addEventListener('click', () => {
   earnFp(fp);
   if (growth > 0) applyGrowth(growth);
   if (faith === 'gospel') state.gospelShareCount++;
+  addTeamActivity(`completed ${btn.textContent.trim().split('+')[0].trim()}`, btn.textContent.trim().split(' ')[0]);
 
   el('photoUploadModal').hidden = true;
   pendingFaithBtn = null;
@@ -1616,15 +1625,37 @@ function renderTeamRequests() {
 }
 
 /* ---------------- Team feed — one reaction per person, per post ---------------- */
+function getPlayerDisplayName() {
+  return state.profileName || 'You';
+}
+
+function addTeamActivity(action, icon = '🌱') {
+  state.teamFeedPosts.unshift({
+    id: 'activity_' + Math.random().toString(36).slice(2, 9),
+    uid: LOCAL_AUTHOR_ID,
+    name: getPlayerDisplayName(),
+    action,
+    icon,
+    createdAt: new Date().toISOString()
+  });
+  // Keep local saves small while retaining a useful recent history.
+  state.teamFeedPosts = state.teamFeedPosts.slice(0, 40);
+  saveState();
+}
+
 function renderTeamFeed() {
-  el('teamFeedList').innerHTML = CONFIG.teamFeedSeed.map((item, i) => {
-    const myReaction = state.teamFeedReactions[i];
+  const seedPosts = CONFIG.teamFeedSeed.map((item, i) => ({ ...item, key: `seed-${i}` }));
+  const userPosts = (state.teamFeedPosts || []).map(post => ({ ...post, key: `user-${post.id}` }));
+  const allPosts = [...userPosts, ...seedPosts];
+
+  el('teamFeedList').innerHTML = allPosts.map(item => {
+    const myReaction = state.teamFeedReactions[item.key];
     return `
       <div class="team-feed-item">
-        <div class="team-feed-text">${item.icon} <strong>${item.name}</strong> ${item.action}</div>
+        <div class="team-feed-text">${item.icon} <strong>${escapeHtml(item.name)}</strong> ${escapeHtml(item.action)}</div>
         <div class="team-feed-reactions">
           ${['🔥', '🙏', '👏'].map(emoji => `
-            <button class="reaction-btn ${myReaction === emoji ? 'active' : ''}" data-feed-index="${i}" data-emoji="${emoji}">
+            <button class="reaction-btn ${myReaction === emoji ? 'active' : ''}" data-feed-key="${item.key}" data-emoji="${emoji}">
               ${emoji} <span>${myReaction === emoji ? 1 : 0}</span>
             </button>
           `).join('')}
@@ -1635,11 +1666,11 @@ function renderTeamFeed() {
 
   el('teamFeedList').querySelectorAll('.reaction-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const idx = btn.dataset.feedIndex;
+      const key = btn.dataset.feedKey;
       const emoji = btn.dataset.emoji;
       // Exactly one reaction per person per post: picking the same emoji
       // again clears it, picking a different one switches to it.
-      state.teamFeedReactions[idx] = state.teamFeedReactions[idx] === emoji ? undefined : emoji;
+      state.teamFeedReactions[key] = state.teamFeedReactions[key] === emoji ? undefined : emoji;
       SFX.tap();
       saveState();
       renderTeamFeed();
@@ -1679,7 +1710,7 @@ function renderFaithFeeds() {
 
   el('faithFeedList').innerHTML = allPosts.map(post => {
     const myReaction = state.faithFeedReactions[post.key];
-    const isYou = post.name === 'You';
+    const isYou = post.uid === LOCAL_AUTHOR_ID || post.name === 'You';
     const comments = Array.isArray(post.comments) ? post.comments : [];
     return `
       <div class="team-feed-item ${isYou ? 'is-your-post' : ''}">
@@ -1760,11 +1791,14 @@ function postToFaithFeed(text, icon) {
   if (!trimmed) return;
   state.faithFeedPosts.unshift({
     id: 'p_' + Math.random().toString(36).slice(2, 9),
-    name: 'You',
+    uid: LOCAL_AUTHOR_ID,
+    name: getPlayerDisplayName(),
     icon: icon || '📝',
     text: trimmed,
+    createdAt: new Date().toISOString(),
     comments: []
   });
+  addTeamActivity('shared something in the Faith Feed', icon || '📝');
   saveState();
 }
 
