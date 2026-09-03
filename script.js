@@ -168,15 +168,25 @@ const CONFIG = {
     }
   ],
 
-  // A rotating verse shown on Home, independent of the Challenge events —
-  // picked deterministically by date so it's the same verse all day.
-  verseOfDayPool: [
+  // A rotating verse shown on Home, independent of the Challenge events.
+  // Both options are free to use, and the selected translation is part of
+  // the daily index so changing versions changes the displayed verse now.
+  verseOfDayPools: {
+    KJV: [
     { text: 'And he shall be like a tree planted by the rivers of water, that bringeth forth his fruit in his season; his leaf also shall not wither.', ref: 'Psalm 1:3 (KJV)' },
     { text: 'For he shall be as a tree planted by the waters, and that spreadeth out her roots by the river, and shall not see when heat cometh, but her leaf shall be green.', ref: 'Jeremiah 17:7-8 (KJV)' },
     { text: 'Even so every good tree bringeth forth good fruit; but a corrupt tree bringeth forth evil fruit.', ref: 'Matthew 7:17 (KJV)' },
     { text: 'Trust in the LORD with all thine heart; and lean not unto thine own understanding.', ref: 'Proverbs 3:5 (KJV)' },
     { text: 'I can do all things through Christ which strengtheneth me.', ref: 'Philippians 4:13 (KJV)' }
-  ],
+    ],
+    WEB: [
+      { text: 'He will be like a tree planted by the streams of water, that brings forth its fruit in its season, whose leaf also does not wither. Whatever he does shall prosper.', ref: 'Psalm 1:3 (WEB)' },
+      { text: 'For he will be as a tree planted by the waters, that spreads out its roots by the river, and will not fear when the heat comes, but its leaf will be green.', ref: 'Jeremiah 17:8 (WEB)' },
+      { text: 'Even so, every good tree produces good fruit; but the corrupt tree produces evil fruit.', ref: 'Matthew 7:17 (WEB)' },
+      { text: 'Trust in the LORD with all your heart, and don’t lean on your own understanding.', ref: 'Proverbs 3:5 (WEB)' },
+      { text: 'I can do all things through Christ, who strengthens me.', ref: 'Philippians 4:13 (WEB)' }
+    ]
+  },
 
   // Seed types — "Choose Your Seed": five spiritual-fruit themes, each
   // with its own verse and color identity, matching the original design.
@@ -324,6 +334,7 @@ function defaultState() {
     profileName: '',
     profileNameEditsUsed: 0, // 0 = never set; after first set, exactly 1 more edit allowed, then locked
     profileEmail: '',
+    preferredBibleVersion: 'KJV',
     dateJoined: getDateKey(), // captured once, the first time this browser ever loads the sandbox
     avatarId: null,
     unlockedAvatars: [],       // ids of purchased emoji avatars (200 FP each)
@@ -1087,10 +1098,12 @@ el('claimTodayBtn').addEventListener('click', () => {
 
 /* ---------------- Verse of the Day ---------------- */
 function renderVerseOfDay() {
-  const pool = CONFIG.verseOfDayPool;
-  // Deterministic by date, so it's the same verse all day and changes daily.
+  const version = state.preferredBibleVersion || 'KJV';
+  const pool = CONFIG.verseOfDayPools[version] || CONFIG.verseOfDayPools.KJV;
+  // Deterministic by date and version, so it's the same verse all day.
   const dayNumber = Math.floor(Date.now() / 86400000);
-  const verse = pool[dayNumber % pool.length];
+  const versionOffset = version === 'KJV' ? 0 : 1;
+  const verse = pool[(dayNumber + versionOffset) % pool.length];
   el('verseText').textContent = `"${verse.text}"`;
   el('verseRef').textContent = verse.ref;
 }
@@ -2267,6 +2280,13 @@ el('saveProfileEmailBtn').addEventListener('click', () => {
   showToast('Email saved and locked — this cannot be changed later.', 'success');
 });
 
+el('preferredBibleVersionInput').addEventListener('change', () => {
+  state.preferredBibleVersion = el('preferredBibleVersionInput').value;
+  saveState();
+  renderVerseOfDay();
+  showToast(`Preferred Bible version set to ${state.preferredBibleVersion}.`, 'success');
+});
+
 /* ---------------- Sound toggle ---------------- */
 el('soundToggle').addEventListener('change', () => {
   state.soundEnabled = el('soundToggle').checked;
@@ -2373,6 +2393,7 @@ renderSeedTypeGrid();
 el('treeNameInput').value = state.treeName || '';
 el('profileNameInput').value = state.profileName || '';
 el('profileEmailInput').value = state.profileEmail || '';
+el('preferredBibleVersionInput').value = state.preferredBibleVersion || 'KJV';
 renderDateJoined();
 renderProfileAvatarPreview();
 renderNameLocks();
