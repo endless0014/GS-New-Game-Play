@@ -327,7 +327,12 @@
 
       <div class="compose-box">
         <textarea id="faithFeedComposeInput" placeholder="Share an update…" maxlength="200" rows="2"></textarea>
-        <button class="btn" id="faithFeedPostBtn" style="width:100%;margin-top:0.5rem;">Post</button>
+        <div class="compose-preview" id="faithFeedComposePreview" hidden></div>
+        <div class="compose-actions">
+          <input type="file" id="faithFeedImageInput" accept="image/*" hidden />
+          <button class="btn secondary add-photo-btn" id="faithFeedAddPhotoBtn" type="button">📷 Add photo</button>
+          <button class="btn" id="faithFeedPostBtn" type="button">Post</button>
+        </div>
       </div>
 
       <div id="faithFeedList"></div>
@@ -360,17 +365,23 @@
 
   <div class="tab-panel" data-tab="ranking" hidden>
 
-  <section class="card">
-    <div class="card-head"><h3>🏆 Leaderboard</h3></div>
-    <div class="ranking-view-toggle">
+  <section class="card ranking-card">
+    <div class="ranking-heading">
+      <div><p class="eyebrow">SEE HOW YOU GROW</p><h2>🏆 Leaderboard</h2></div>
+      <span class="ranking-live-dot">LIVE</span>
+    </div>
+    <div class="ranking-view-toggle" aria-label="Leaderboard type">
       <button class="chip active" id="rankingIndividualBtn">Individual</button>
       <button class="chip" id="rankingTeamBtn">Teams</button>
     </div>
 
     <div id="individualRankingPanel">
-      <div class="ranking-metric-toggle">
+      <div class="ranking-panel-head">
+        <span class="ranking-panel-label">Ranked by</span>
+        <div class="ranking-metric-toggle">
         <button class="chip active" id="rankingByFpBtn">⭐ Total FP</button>
         <button class="chip" id="rankingByProgressBtn">🌱 Tree Progress</button>
+        </div>
       </div>
       <p class="card-sub">Sample local leaderboard — for demonstration only.</p>
       <div id="podiumContainer" class="podium"></div>
@@ -378,7 +389,7 @@
     </div>
 
     <div id="teamRankingPanel" hidden>
-      <p class="card-sub" id="teamRankingNote">Sample team leaderboard, ranked by fruit collected this week.</p>
+      <p class="card-sub ranking-context" id="teamRankingNote">Sample team leaderboard, ranked by fruit collected this week.</p>
       <div id="teamPodiumContainer" class="podium"></div>
       <div id="teamBattleList"></div>
     </div>

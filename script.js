@@ -1697,13 +1697,17 @@ function renderFaithFeeds() {
     name: item.name,
     icon: item.icon,
     text: item.action,
+    createdAt: new Date(Date.now() - ((i + 1) * 47 * 60000)).toISOString(),
     comments: []
   }));
   const userPosts = state.faithFeedPosts.map(p => ({
     key: `user-${p.id}`,
+    uid: p.uid,
     name: p.name,
     icon: p.icon,
     text: p.text,
+    imageDataUrl: p.imageDataUrl,
+    createdAt: p.createdAt,
     comments: Array.isArray(p.comments) ? p.comments : []
   }));
   const allPosts = [...userPosts, ...seedPosts];
@@ -1714,7 +1718,12 @@ function renderFaithFeeds() {
     const comments = Array.isArray(post.comments) ? post.comments : [];
     return `
       <div class="team-feed-item ${isYou ? 'is-your-post' : ''}">
-        <div class="team-feed-text">${post.icon} <strong>${escapeHtml(post.name)}</strong> ${escapeHtml(post.text)}</div>
+        <div class="faith-post-header">
+          <span class="faith-post-icon">${post.icon}</span>
+          <div class="faith-post-author"><strong>${escapeHtml(post.name)}</strong><time datetime="${post.createdAt || ''}">${formatRelativeTime(post.createdAt)}</time></div>
+        </div>
+        <div class="team-feed-text">${escapeHtml(post.text)}</div>
+        ${post.imageDataUrl ? `<img class="faith-post-image" src="${post.imageDataUrl}" alt="Photo shared by ${escapeHtml(post.name)}" />` : ''}
         <div class="team-feed-reactions">
           ${['🔥', '🙏', '👏'].map(emoji => `
             <button class="reaction-btn ${myReaction === emoji ? 'active' : ''}" data-post-key="${post.key}" data-emoji="${emoji}">
@@ -1786,15 +1795,73 @@ function renderFaithFeeds() {
   });
 }
 
-function postToFaithFeed(text, icon) {
+function formatRelativeTime(value) {
+  const timestamp = Date.parse(value || '');
+  if (Number.isNaN(timestamp)) return 'Recently';
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (elapsedSeconds < 60) return 'Just now';
+  const minutes = Math.floor(elapsedSeconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  if (hours < 48) return 'Yesterday';
+  const date = new Date(timestamp);
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+let pendingFaithFeedImage = null;
+
+function renderFaithFeedComposePreview() {
+  const preview = el('faithFeedComposePreview');
+  if (!pendingFaithFeedImage) {
+    preview.hidden = true;
+    preview.innerHTML = '';
+    return;
+  }
+  preview.hidden = false;
+  preview.innerHTML = `<img src="${pendingFaithFeedImage}" alt="Selected photo preview" /><button class="remove-photo-btn" type="button" aria-label="Remove selected photo">&times;</button>`;
+  preview.querySelector('.remove-photo-btn').addEventListener('click', () => {
+    pendingFaithFeedImage = null;
+    el('faithFeedImageInput').value = '';
+    renderFaithFeedComposePreview();
+  });
+}
+
+function prepareFaithFeedImage(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const image = new Image();
+    image.onload = () => {
+      const maxDimension = 1200;
+      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      pendingFaithFeedImage = canvas.toDataURL('image/jpeg', 0.82);
+      renderFaithFeedComposePreview();
+    };
+    image.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+el('faithFeedAddPhotoBtn').addEventListener('click', () => el('faithFeedImageInput').click());
+el('faithFeedImageInput').addEventListener('change', event => {
+  prepareFaithFeedImage(event.target.files && event.target.files[0]);
+});
+
+function postToFaithFeed(text, icon, imageDataUrl = null) {
   const trimmed = text.trim();
-  if (!trimmed) return;
+  if (!trimmed && !imageDataUrl) return;
   state.faithFeedPosts.unshift({
     id: 'p_' + Math.random().toString(36).slice(2, 9),
     uid: LOCAL_AUTHOR_ID,
     name: getPlayerDisplayName(),
     icon: icon || '📝',
     text: trimmed,
+    imageDataUrl,
     createdAt: new Date().toISOString(),
     comments: []
   });
@@ -1805,12 +1872,14 @@ function postToFaithFeed(text, icon) {
 el('faithFeedPostBtn').addEventListener('click', () => {
   const input = el('faithFeedComposeInput');
   const text = input.value.trim();
-  if (!text) {
-    showToast('Write something to share first.', 'warning');
+  if (!text && !pendingFaithFeedImage) {
+    showToast('Write something or add a photo first.', 'warning');
     return;
   }
-  postToFaithFeed(text, '📝');
+  postToFaithFeed(text, '📝', pendingFaithFeedImage);
   input.value = '';
+  pendingFaithFeedImage = null;
+  renderFaithFeedComposePreview();
   SFX.tap();
   showToast('Posted to Faith Feeds!', 'success');
   renderFaithFeeds();

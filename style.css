@@ -842,9 +842,95 @@ button {
   min-height: 3.2rem;
 }
 
+.compose-actions {
+  display: flex;
+  gap: 0.55rem;
+  margin-top: 0.55rem;
+}
+
+.compose-actions .btn { flex: 1; }
+.compose-actions .add-photo-btn { color: var(--accent-strong); }
+
+.compose-preview {
+  position: relative;
+  width: 100%;
+  margin-top: 0.65rem;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-mute);
+}
+
+.compose-preview img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.remove-photo-btn {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(20, 35, 25, 0.72);
+  font-size: 1.15rem;
+}
+
 .team-feed-item.is-your-post {
   background: var(--accent-soft);
   border-left: 3px solid var(--accent);
+}
+
+.faith-post-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.faith-post-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.78);
+  font-size: 1rem;
+}
+
+.faith-post-author {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.faith-post-author strong { font-size: 0.84rem; }
+.faith-post-author time {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.faith-post-header + .team-feed-text {
+  margin-left: 2.5rem;
+  line-height: 1.45;
+}
+
+.faith-post-image {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  margin: 0.6rem 0 0.7rem;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--surface-mute);
 }
 
 /* Verse shown inside the Challenge popup */
@@ -944,14 +1030,55 @@ button {
 .user-stats .u-stat .l { font-size: 0.7rem; color: var(--text-muted); }
 
 /* ---------------- Sample leaderboard ---------------- */
+.ranking-card {
+  padding: 1.15rem 1rem 1rem;
+  background: linear-gradient(145deg, #ffffff 0%, #f5fbf6 100%);
+  border: 1px solid rgba(58, 158, 79, 0.1);
+}
+
+.ranking-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
+}
+
+.ranking-heading h2 {
+  margin: 0.12rem 0 0;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+}
+
+.ranking-live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--accent-strong);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.ranking-live-dot::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(58, 158, 79, 0.12);
+}
+
 .ranking-row {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.6rem 0.5rem;
-  border-radius: 10px;
+  padding: 0.7rem 0.6rem;
+  border-top: 1px solid rgba(43, 116, 65, 0.09);
+  transition: background 0.18s ease, transform 0.18s ease;
 }
-.ranking-row.is-you { background: var(--accent-soft); }
+.ranking-row:hover { background: rgba(236, 248, 237, 0.55); }
+.ranking-row.is-you { background: var(--accent-soft); border-top-color: transparent; box-shadow: inset 3px 0 0 var(--accent); }
 .ranking-rank { font-weight: 800; width: 1.6rem; color: var(--text-muted); flex-shrink: 0; }
 .ranking-name { flex: 1; font-weight: 700; font-size: 0.88rem; }
 .ranking-fp { font-weight: 800; color: var(--accent-strong); font-size: 0.88rem; }
@@ -963,8 +1090,9 @@ button {
   align-items: flex-end;
   justify-content: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin: 0.35rem 0 0.8rem;
   min-height: 170px;
+  padding: 0 0.25rem;
 }
 
 .podium-slot {
@@ -998,6 +1126,7 @@ button {
   width: 100%;
   border-radius: 10px 10px 0 0;
   background: var(--accent-gradient);
+  box-shadow: inset 0 1px rgba(255,255,255,0.5);
 }
 .podium-bar-1 { height: 90px; background: linear-gradient(135deg, #ffe08a, #f3c94a); }
 .podium-bar-2 { height: 62px; background: linear-gradient(135deg, #dfe6ec, #b9c4cf); }
@@ -1206,12 +1335,33 @@ button {
 .ranking-view-toggle {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 0.8rem;
+  padding: 0.25rem;
+  margin-bottom: 0.9rem;
+  border-radius: 13px;
+  background: var(--surface-mute);
 }
+.ranking-view-toggle .chip { flex: 1; }
 .ranking-metric-toggle {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 0.6rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ranking-metric-toggle::-webkit-scrollbar { display: none; }
+.ranking-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+.ranking-panel-label {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.ranking-context { margin-bottom: 0.65rem; }
 }
 
 /* ---------------- Team roster / feed / battle ---------------- */
