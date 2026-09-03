@@ -388,32 +388,42 @@
 
   <div class="tab-panel" data-tab="profile" hidden>
 
-  <section class="card">
-    <div class="card-head">
-      <h3>👤 Profile</h3>
+  <section class="card profile-card">
+    <div class="profile-identity">
+      <div>
+        <p class="eyebrow">YOUR ACCOUNT</p>
+        <h2>Profile</h2>
+        <p class="profile-summary">Make this space yours.</p>
+      </div>
       <button class="avatar-preview" id="profileAvatarPreview" aria-label="Change avatar"></button>
     </div>
 
-    <label class="field-label">Name</label>
+    <div class="profile-field">
+    <label class="field-label" for="profileNameInput">Name</label>
     <div class="field-with-button">
       <input type="text" id="profileNameInput" class="admin-search" placeholder="Enter your name…" maxlength="24" />
       <button class="btn" id="saveProfileNameBtn">Save</button>
     </div>
     <p class="lock-hint" id="profileNameHint"></p>
+    </div>
 
-    <label class="field-label" style="margin-top:0.9rem;">Email</label>
+    <div class="profile-field">
+    <label class="field-label" for="profileEmailInput">Email</label>
     <div class="field-with-button">
       <input type="email" id="profileEmailInput" class="admin-search" placeholder="you@example.com" />
       <button class="btn" id="saveProfileEmailBtn">Save</button>
     </div>
     <p class="lock-hint" id="profileEmailHint">Set once when you register — this cannot be changed afterward.</p>
+    </div>
 
-    <label class="field-label" style="margin-top:0.9rem;">Date Joined</label>
-    <p class="date-joined-value" id="dateJoinedValue">—</p>
+    <div class="member-since">
+      <span class="member-since-icon">✦</span>
+      <div><span class="field-label">Member since</span><strong class="date-joined-value" id="dateJoinedValue">—</strong></div>
+    </div>
   </section>
 
-  <section class="card">
-    <div class="card-head"><h3>🌳 Name Your Tree</h3></div>
+  <section class="card profile-card tree-name-card">
+    <div class="card-head"><div><p class="eyebrow">PERSONALIZE</p><h3>🌳 Name Your Tree</h3></div></div>
     <div class="field-with-button">
       <input type="text" id="treeNameInput" class="admin-search" placeholder="Give your tree a name…" maxlength="24" />
       <button class="btn" id="saveTreeNameBtn">Save</button>
