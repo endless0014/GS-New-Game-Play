@@ -597,42 +597,46 @@
 
     <!-- No team yet: invitations first, then create or join -->
     <div id="noTeamPanel">
-      <h2>🧑‍🤝‍🧑 Team</h2>
+      <div class="team-modal-kicker">FIND YOUR PEOPLE</div>
+      <h2>🧑‍🤝‍🧑 Your Team</h2>
+      <p class="card-sub team-intro">Grow together, encourage one another, and keep showing up.</p>
 
       <div id="teamInvitationsSection">
-        <h4 class="analytics-subhead">Invitations</h4>
+        <h4 class="analytics-subhead team-section-heading">Invitations</h4>
         <div id="teamInvitationsList"></div>
         <p class="empty-state" id="teamInvitationsEmpty" hidden>No pending invitations.</p>
       </div>
 
-      <h4 class="analytics-subhead">Start your own</h4>
+      <h4 class="analytics-subhead team-section-heading">Start your own</h4>
       <button class="btn" id="createTeamOpenBtn" style="width:100%;">🏗️ Create a Team (500 FP)</button>
 
-      <h4 class="analytics-subhead">Request to join a team</h4>
+      <h4 class="analytics-subhead team-section-heading">Request to join a team</h4>
       <div id="joinableTeamsList"></div>
     </div>
 
     <!-- Has a team: identity + simple menu, each item opens its own modal -->
     <div id="hasTeamPanel" hidden>
       <div class="team-modal-header">
+        <div class="team-modal-kicker">MY COMMUNITY</div>
         <h2 id="teamModalName">🌳 Team Name</h2>
         <p class="team-modal-subtitle" id="teamModalSubtitle"></p>
       </div>
 
+      <p class="team-section-label">Stay connected</p>
       <div class="team-menu">
         <button class="team-menu-btn" id="viewFeedBtn">
           <span class="team-menu-icon">🏃</span>
-          <span class="team-menu-label">Team Activities</span>
+          <span class="team-menu-copy"><strong class="team-menu-label">Team Activities</strong><small>Celebrate today's progress</small></span>
           <span class="team-menu-arrow">›</span>
         </button>
         <button class="team-menu-btn" id="viewRosterBtn">
           <span class="team-menu-icon">👥</span>
-          <span class="team-menu-label">Team Members</span>
+          <span class="team-menu-copy"><strong class="team-menu-label">Team Members</strong><small>See everyone's growing tree</small></span>
           <span class="team-menu-arrow">›</span>
         </button>
         <button class="team-menu-btn" id="viewRequestsBtn" hidden>
           <span class="team-menu-icon">📋</span>
-          <span class="team-menu-label">Join Requests</span>
+          <span class="team-menu-copy"><strong class="team-menu-label">Join Requests</strong><small>Welcome someone new</small></span>
           <span class="team-menu-count" id="teamRequestsCount"></span>
           <span class="team-menu-arrow">›</span>
         </button>
@@ -647,6 +651,7 @@
 <div class="modal" id="rosterModal" hidden>
   <div class="modal-content team-modal-content">
     <button class="modal-close-x" id="closeRosterModalBtn" aria-label="Close">&times;</button>
+    <div class="team-modal-kicker">YOUR COMMUNITY</div>
     <h2>👥 Team Members</h2>
     <p class="card-sub" id="rosterSizeNote"></p>
     <div id="teamRosterList"></div>
@@ -657,7 +662,9 @@
 <div class="modal" id="feedModal" hidden>
   <div class="modal-content team-modal-content">
     <button class="modal-close-x" id="closeFeedModalBtn" aria-label="Close">&times;</button>
+    <div class="team-modal-kicker">A LITTLE ENCOURAGEMENT GOES FAR</div>
     <h2>🏃 Team Activities</h2>
+    <p class="card-sub">Small steps are worth sharing. React to a teammate's progress.</p>
     <div id="teamFeedList"></div>
   </div>
 </div>
@@ -666,6 +673,7 @@
 <div class="modal" id="requestsModal" hidden>
   <div class="modal-content team-modal-content">
     <button class="modal-close-x" id="closeRequestsModalBtn" aria-label="Close">&times;</button>
+    <div class="team-modal-kicker">GROW THE CIRCLE</div>
     <h2>📋 Join Requests</h2>
     <p class="card-sub">People asking to join your team.</p>
     <div id="teamRequestsList"></div>
