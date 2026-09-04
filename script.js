@@ -358,7 +358,14 @@ function defaultState() {
     // mock community posts, which never get persisted since they're the
     // same every time (same pattern as teamFeedSeed).
     faithFeedPosts: [],        // [{ id, uid, name, icon, text, createdAt, comments:[] }] — newest first
-    faithFeedReactions: {}     // key: 'seed-{i}' or 'user-{id}' -> the emoji THIS player reacted with
+    faithFeedReactions: {},    // key: 'seed-{i}' or 'user-{id}' -> the emoji THIS player reacted with
+    profileVisibility: 'public',
+    blockedUsers: [],
+    mutedUsers: [],
+    pulseRequests: [],
+    notifications: [],
+    shareHistory: [],
+    feedVisibleCount: 20
   };
 }
 
@@ -384,6 +391,13 @@ function loadState() {
     }
     if (!Array.isArray(merged.faithFeedPosts)) merged.faithFeedPosts = [];
     if (!merged.faithFeedReactions || typeof merged.faithFeedReactions !== 'object') merged.faithFeedReactions = {};
+    if (!['public', 'followers', 'private'].includes(merged.profileVisibility)) merged.profileVisibility = 'public';
+    if (!Array.isArray(merged.blockedUsers)) merged.blockedUsers = [];
+    if (!Array.isArray(merged.mutedUsers)) merged.mutedUsers = [];
+    if (!Array.isArray(merged.pulseRequests)) merged.pulseRequests = [];
+    if (!Array.isArray(merged.notifications)) merged.notifications = [];
+    if (!Array.isArray(merged.shareHistory)) merged.shareHistory = [];
+    if (!Number.isInteger(merged.feedVisibleCount) || merged.feedVisibleCount < 1) merged.feedVisibleCount = 20;
     if (!Array.isArray(merged.teamFeedPosts)) merged.teamFeedPosts = [];
     if (!Array.isArray(merged.unlockedAvatars)) merged.unlockedAvatars = [];
     if (merged.badges) {
@@ -1251,6 +1265,7 @@ let rankingView = 'individual';
 let rankingMetric = 'fp'; // 'fp' | 'progress'
 let currentIndividualRankingRows = [];
 let currentTeamRankingRows = [];
+let pendingRankShare = null;
 
 el('rankingIndividualBtn').addEventListener('click', () => {
   rankingView = 'individual';
@@ -1359,10 +1374,29 @@ function renderTeamBattle() {
   renderPodiumAndList(el('teamPodiumContainer'), el('teamBattleList'), rows, row => `🍎 ${row.fruit}`);
 }
 
-function shareRanking(text, successMessage) {
-  postToFaithFeed(text, '🏆');
+function openShareCaptionModal(text, icon, successMessage, imageDataUrl = null, sourcePost = null) {
+  pendingRankShare = { text, icon, successMessage, imageDataUrl, sourcePost };
+  el('rankSharePreview').textContent = text;
+  el('rankShareCaption').value = '';
+  el('rankShareModal').hidden = false;
+  el('rankShareCaption').focus();
+}
+
+function closeRankShareModal() {
+  el('rankShareModal').hidden = true;
+  pendingRankShare = null;
+}
+
+function confirmShareWithCaption(text, icon, successMessage, imageDataUrl, sourcePost = null) {
+  const caption = el('rankShareCaption').value.trim();
+  const postText = caption ? `${caption}\n${text}` : text;
+  postToFaithFeed(postText, icon, imageDataUrl, sourcePost);
+  state.shareHistory.unshift({ sourceType: sourcePost ? 'feedPost' : 'share', sourceId: sourcePost ? sourcePost.key : null, caption, createdAt: new Date().toISOString() });
+  addLocalNotification('reshare', sourcePost ? sourcePost.key : null, 'Your reshare is now in Faith Feeds.');
+  saveState();
   SFX.tap();
   showToast(successMessage, 'success');
+  closeRankShareModal();
 }
 
 el('shareIndividualRankBtn').addEventListener('click', () => {
@@ -1370,7 +1404,7 @@ el('shareIndividualRankBtn').addEventListener('click', () => {
   if (!rank) return;
   const metric = rankingMetric === 'fp' ? 'Total FP' : 'Tree Progress';
   const row = currentIndividualRankingRows[rank - 1];
-  shareRanking(`shared their individual rank: #${rank} • ${metric} ${row[rankingMetric]} 🏆`, 'Individual rank shared to Faith Feeds!');
+  openShareCaptionModal(`shared their individual rank: #${rank} • ${metric} ${row[rankingMetric]} 🏆`, '🏆', 'Individual rank shared to Faith Feeds!');
 });
 
 el('shareTeamRankBtn').addEventListener('click', () => {
@@ -1380,8 +1414,14 @@ el('shareTeamRankBtn').addEventListener('click', () => {
     return;
   }
   const row = currentTeamRankingRows[rank - 1];
-  shareRanking(`shared their team rank: #${rank} • ${row.name} • ${row.fruit} fruit 🏆`, 'Team rank shared to Faith Feeds!');
+  openShareCaptionModal(`shared their team rank: #${rank} • ${row.name} • ${row.fruit} fruit 🏆`, '🏆', 'Team rank shared to Faith Feeds!');
 });
+
+el('confirmRankShareBtn').addEventListener('click', () => {
+  if (pendingRankShare) confirmShareWithCaption(pendingRankShare.text, pendingRankShare.icon, pendingRankShare.successMessage, pendingRankShare.imageDataUrl, pendingRankShare.sourcePost);
+});
+el('closeRankShareBtn').addEventListener('click', closeRankShareModal);
+el('cancelRankShareBtn').addEventListener('click', closeRankShareModal);
 
 /* ---------------- Team modal (opened from the bottom nav) ---------------- */
 const JOINABLE_TEAMS = ['Branching Out', 'Fruitbearers', 'The Vineyard'];
@@ -1778,9 +1818,11 @@ function renderFaithFeeds() {
     createdAt: p.createdAt,
     comments: Array.isArray(p.comments) ? p.comments : []
   }));
-  const allPosts = [...userPosts, ...seedPosts];
+  const allPosts = [...userPosts, ...seedPosts]
+    .filter(post => !state.blockedUsers.includes(post.uid) && !state.mutedUsers.includes(post.uid));
+  const visiblePosts = allPosts.slice(0, state.feedVisibleCount);
 
-  el('faithFeedList').innerHTML = allPosts.map(post => {
+  el('faithFeedList').innerHTML = visiblePosts.map(post => {
     const myReaction = state.faithFeedReactions[post.key];
     const isYou = post.uid === LOCAL_AUTHOR_ID || post.name === 'You';
     const comments = Array.isArray(post.comments) ? post.comments : [];
@@ -1789,6 +1831,7 @@ function renderFaithFeeds() {
         <div class="faith-post-header">
           <span class="faith-post-icon">${post.icon}</span>
           <div class="faith-post-author"><strong>${escapeHtml(post.name)}</strong><time datetime="${post.createdAt || ''}">${formatRelativeTime(post.createdAt)}</time></div>
+          <button class="feed-more-btn" data-post-key="${post.key}" type="button" aria-label="Post privacy options">•••</button>
         </div>
         <div class="team-feed-text">${escapeHtml(post.text)}</div>
         ${post.imageDataUrl ? `<img class="faith-post-image" src="${post.imageDataUrl}" alt="Photo shared by ${escapeHtml(post.name)}" />` : ''}
@@ -1799,6 +1842,8 @@ function renderFaithFeeds() {
             </button>
           `).join('')}
         </div>
+        <button class="btn small feed-reshare-btn" data-reshare-key="${post.key}" type="button">📤 Re-share</button>
+        ${isYou ? `<button class="btn small danger-action feed-delete-btn" data-delete-key="${post.key}" type="button">Delete</button>` : ''}
         <div class="faith-feed-comments">
           ${comments.length ? comments.map(comment => `
             <div class="faith-comment"><strong>${escapeHtml(comment.author)}</strong> ${escapeHtml(comment.text)}</div>
@@ -1811,6 +1856,7 @@ function renderFaithFeeds() {
       </div>
     `;
   }).join('');
+  el('loadMoreFeedBtn').hidden = visiblePosts.length >= allPosts.length;
 
   // Scoped to #faithFeedList specifically — Team Activities uses the same
   // .reaction-btn class in a separate modal, so binding via a bare
@@ -1820,8 +1866,44 @@ function renderFaithFeeds() {
       const key = btn.dataset.postKey;
       const emoji = btn.dataset.emoji;
       state.faithFeedReactions[key] = state.faithFeedReactions[key] === emoji ? undefined : emoji;
+      if (state.faithFeedReactions[key]) addLocalNotification('reaction', key, `You reacted ${emoji} to a Faith Feed post.`);
       SFX.tap();
       saveState();
+      renderFaithFeeds();
+    });
+  });
+
+  el('faithFeedList').querySelectorAll('.feed-reshare-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const post = allPosts.find(item => item.key === btn.dataset.reshareKey);
+      if (!post) return;
+      openShareCaptionModal(
+        `reshared ${post.name}'s post: ${post.text}`,
+        post.icon || '📝',
+        'Post re-shared to Faith Feeds!',
+        post.imageDataUrl || null,
+        post
+      );
+    });
+  });
+
+  el('faithFeedList').querySelectorAll('.feed-more-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const post = allPosts.find(item => item.key === btn.dataset.postKey);
+      if (!post || post.uid === LOCAL_AUTHOR_ID) return;
+      const action = prompt(`Options for ${post.name}: type block, mute, or report`);
+      if (action === 'block') addRelationship('blockedUsers', post.uid, post.name);
+      else if (action === 'mute') addRelationship('mutedUsers', post.uid, post.name);
+      else if (action === 'report') reportLocalContent('post', post.key);
+    });
+  });
+
+  el('faithFeedList').querySelectorAll('.feed-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const postId = btn.dataset.deleteKey.replace('user-', '');
+      state.faithFeedPosts = state.faithFeedPosts.filter(post => post.id !== postId);
+      saveState();
+      addLocalNotification('post_deleted', postId, 'Your post was deleted.');
       renderFaithFeeds();
     });
   });
@@ -1862,6 +1944,58 @@ function renderFaithFeeds() {
     });
   });
 }
+
+function addLocalNotification(type, entityId, message) {
+  state.notifications.unshift({ id: `n_${Date.now()}`, type, entityId, message, read: false, createdAt: new Date().toISOString() });
+  state.notifications = state.notifications.slice(0, 50);
+}
+
+function sendLocalPulseRequest(targetUid, targetName) {
+  if (!targetUid || targetUid === LOCAL_AUTHOR_ID) return false;
+  const pending = state.pulseRequests.some(request => request.fromUid === LOCAL_AUTHOR_ID && request.toUid === targetUid && request.status === 'pending');
+  if (pending) {
+    showToast('A PULSE Request is already pending.', 'warning');
+    return false;
+  }
+  state.pulseRequests.push({ id: `pulse_${LOCAL_AUTHOR_ID}_${targetUid}`, fromUid: LOCAL_AUTHOR_ID, toUid: targetUid, name: getPlayerDisplayName(), targetName, status: 'pending', createdAt: new Date().toISOString() });
+  addLocalNotification('pulse_request', targetUid, `PULSE Request sent to ${targetName}.`);
+  saveState();
+  showToast(`PULSE Request sent to ${targetName}.`, 'success');
+  return true;
+}
+
+function cancelLocalPulseRequest(requestId) {
+  const request = state.pulseRequests.find(item => item.id === requestId);
+  if (!request || request.fromUid !== LOCAL_AUTHOR_ID || request.status !== 'pending') return false;
+  request.status = 'cancelled';
+  saveState();
+  showToast('PULSE Request cancelled.', 'info');
+  return true;
+}
+
+function addRelationship(field, uid, name) {
+  if (!state[field].includes(uid)) state[field].push(uid);
+  addLocalNotification(field === 'blockedUsers' ? 'blocked' : 'muted', uid, `${name} was ${field === 'blockedUsers' ? 'blocked' : 'muted'}.`);
+  saveState();
+  renderFaithFeeds();
+  renderProfileSafety();
+  showToast(`${name} ${field === 'blockedUsers' ? 'blocked' : 'muted'}.`, 'success');
+}
+
+function reportLocalContent(targetType, targetId) {
+  const reason = prompt('Why are you reporting this?');
+  if (!reason || !reason.trim()) return;
+  state.reports = Array.isArray(state.reports) ? state.reports : [];
+  state.reports.push({ id: `report_${Date.now()}`, reporterUid: LOCAL_AUTHOR_ID, targetType, targetId, reason: reason.trim().slice(0, 500), status: 'open', createdAt: new Date().toISOString() });
+  addLocalNotification('report_submitted', targetId, 'Thanks. Your report was sent for moderator review.');
+  saveState();
+  showToast('Report submitted for review.', 'success');
+}
+
+el('loadMoreFeedBtn').addEventListener('click', () => {
+  state.feedVisibleCount += 20;
+  renderFaithFeeds();
+});
 
 function formatRelativeTime(value) {
   const timestamp = Date.parse(value || '');
@@ -1920,7 +2054,7 @@ el('faithFeedImageInput').addEventListener('change', event => {
   prepareFaithFeedImage(event.target.files && event.target.files[0]);
 });
 
-function postToFaithFeed(text, icon, imageDataUrl = null) {
+function postToFaithFeed(text, icon, imageDataUrl = null, sourcePost = null) {
   const trimmed = text.trim();
   if (!trimmed && !imageDataUrl) return;
   state.faithFeedPosts.unshift({
@@ -1930,10 +2064,12 @@ function postToFaithFeed(text, icon, imageDataUrl = null) {
     icon: icon || '📝',
     text: trimmed,
     imageDataUrl,
+    resharedFrom: sourcePost ? { id: sourcePost.key, name: sourcePost.name } : null,
     createdAt: new Date().toISOString(),
     comments: []
   });
   addTeamActivity('shared something in the Faith Feed', icon || '📝');
+  addLocalNotification(sourcePost ? 'reshare' : 'post', null, sourcePost ? `You reshared ${sourcePost.name}'s post.` : 'Your post is live in Faith Feeds.');
   saveState();
 }
 
@@ -1959,9 +2095,7 @@ el('faithFeedPostBtn').addEventListener('click', () => {
 el('shareVerseBtn').addEventListener('click', () => {
   const verseText = el('verseText').textContent;
   const verseRef = el('verseRef').textContent;
-  postToFaithFeed(`shared today's verse: ${verseText} ${verseRef}`, '📖');
-  SFX.tap();
-  showToast('Verse shared to Faith Feeds!', 'success');
+  openShareCaptionModal(`shared today's verse: ${verseText} ${verseRef}`, '📖', 'Verse shared to Faith Feeds!');
 });
 
 el('shareProgressBtn').addEventListener('click', () => {
@@ -1969,9 +2103,7 @@ el('shareProgressBtn').addEventListener('click', () => {
   const nextStage = getNextStageThreshold();
   const target = nextStage ? nextStage.min : CONFIG.fullBloomThreshold;
   const progressLabel = nextStage ? `${Math.floor(state.treeProgress - currentStage.min)} / ${target - currentStage.min} to ${nextStage.label}` : `Old Tree • ${state.pointsForFruit}/${CONFIG.pointsPerFruit} to next fruit`;
-  postToFaithFeed(`shared my tree progress: ${currentStage.label} • ${progressLabel} 🌱`, '🌳');
-  SFX.tap();
-  showToast('Tree progress shared to Faith Feeds!', 'success');
+  openShareCaptionModal(`shared my tree progress: ${currentStage.label} • ${progressLabel} 🌱`, '🌳', 'Tree progress shared to Faith Feeds!');
 });
 
 /* ---------------- Create / Join / Leave team ---------------- */
@@ -2164,6 +2296,48 @@ function renderDateJoined() {
   const d = new Date(state.dateJoined + 'T00:00:00');
   el('dateJoinedValue').textContent = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
+
+function renderProfileSafety() {
+  el('profileVisibilityInput').value = state.profileVisibility;
+  el('profileSafetySummary').textContent = `${state.blockedUsers.length} blocked • ${state.mutedUsers.length} muted • ${(state.notifications || []).filter(n => !n.read).length} unread notifications`;
+  const notifications = (state.notifications || []).slice(0, 8);
+  el('notificationList').innerHTML = notifications.length
+    ? notifications.map(notification => `<div class="notification-row ${notification.read ? '' : 'unread'}"><strong>${escapeHtml(notification.message)}</strong><time>${formatRelativeTime(notification.createdAt)}</time></div>`).join('')
+    : '<p class="empty-state">No notifications yet.</p>';
+  const pendingRequests = state.pulseRequests.filter(request => request.fromUid === LOCAL_AUTHOR_ID && request.status === 'pending');
+  el('pulseRequestList').innerHTML = pendingRequests.length
+    ? pendingRequests.map(request => `<div class="notification-row"><strong>Pending: ${escapeHtml(request.targetName)}</strong><button class="btn small cancel-pulse-btn" data-request-id="${request.id}" type="button">Cancel</button></div>`).join('')
+    : '<p class="empty-state">No pending PULSE Requests.</p>';
+}
+
+el('profileVisibilityInput').addEventListener('change', () => {
+  state.profileVisibility = el('profileVisibilityInput').value;
+  saveState();
+  renderProfileSafety();
+  showToast('Profile privacy updated.', 'success');
+});
+
+el('markNotificationsReadBtn').addEventListener('click', () => {
+  state.notifications.forEach(notification => { notification.read = true; });
+  saveState();
+  renderProfileSafety();
+});
+
+el('sendPulseRequestBtn').addEventListener('click', () => {
+  const targetUid = el('pulseTargetUidInput').value.trim();
+  if (!targetUid) { showToast('Enter a profile ID first.', 'warning'); return; }
+  if (sendLocalPulseRequest(targetUid, targetUid)) {
+    el('pulseTargetUidInput').value = '';
+    renderProfileSafety();
+  }
+});
+
+el('pulseRequestList').addEventListener('click', event => {
+  const button = event.target.closest('.cancel-pulse-btn');
+  if (!button) return;
+  cancelLocalPulseRequest(button.dataset.requestId);
+  renderProfileSafety();
+});
 
 /* ---------------- Avatar picker (modal-only, locked + purchasable) ---------------- */
 el('profileAvatarPreview').addEventListener('click', () => {
@@ -2424,6 +2598,7 @@ el('profileEmailInput').value = state.profileEmail || '';
 el('preferredBibleVersionInput').value = state.preferredBibleVersion || 'KJV';
 renderDateJoined();
 renderProfileAvatarPreview();
+renderProfileSafety();
 renderNameLocks();
 el('soundToggle').checked = state.soundEnabled;
 renderRanking();

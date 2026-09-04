@@ -54,6 +54,14 @@ service cloud.firestore {
         (currentUserRole() == 'moderator' || isAdminOrAbove());
     }
 
+    function canViewProfile(uid) {
+      return request.auth != null
+        && (uid == request.auth.uid
+          || resource.data.profileVisibility == 'public'
+          || (resource.data.profileVisibility == 'followers'
+            && exists(/databases/$(database)/documents/connections/$(uid)/users/$(request.auth.uid))));
+    }
+
     // ---- users/{uid} ----
     match /users/{uid} {
       // Anyone signed in can read player profiles (needed for the
@@ -91,7 +99,7 @@ service cloud.firestore {
     // ---- publicProfiles/{uid} ----
     // Keep discoverable profile data separate from private gameplay data.
     match /publicProfiles/{uid} {
-      allow read: if request.auth != null;
+      allow read: if canViewProfile(uid);
       allow create: if request.auth != null && request.auth.uid == uid;
       allow update: if request.auth != null && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -104,7 +112,9 @@ service cloud.firestore {
     // ---- pulseRequests/{requestId} ----
     match /pulseRequests/{requestId} {
       allow create: if request.auth != null
+        && requestId == request.resource.data.fromUid + '_' + request.resource.data.toUid
         && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid != request.auth.uid
         && request.resource.data.status == 'pending';
       allow read: if request.auth != null
         && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
@@ -113,7 +123,49 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && request.resource.data.status in ['accepted', 'declined'];
       allow delete: if request.auth != null
-        && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+        && resource.data.fromUid == request.auth.uid
+        && resource.data.status == 'pending';
+    }
+
+    // Relationship controls are private to the account that owns them.
+    match /blocks/{uid}/users/{blockedUid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /mutes/{uid}/users/{mutedUid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Feed posts are bounded by ownership and moderation state. Production
+    // writes should also be checked by a callable function for caption rules.
+    match /faithFeedPosts/{postId} {
+      allow read: if request.auth != null
+        && resource.data.visibility == 'public'
+        && !exists(/databases/$(database)/documents/blocks/$(request.auth.uid)/users/$(resource.data.uid))
+        && !exists(/databases/$(database)/documents/mutes/$(request.auth.uid)/users/$(resource.data.uid));
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 200;
+      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    match /reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() <= 500;
+      allow read, update: if isModeratorOrAbove();
+    }
+
+    match /shareHistory/{shareId} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update: if request.auth != null && resource.data.recipientUid == request.auth.uid;
+      allow create, delete: if false; // trusted server/Cloud Function only
     }
 
     // ---- deletedUsers/{uid} — soft-deleted players ----

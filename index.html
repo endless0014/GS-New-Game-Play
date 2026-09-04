@@ -336,6 +336,7 @@
       </div>
 
       <div id="faithFeedList"></div>
+      <button class="btn secondary" id="loadMoreFeedBtn" type="button" hidden>Load more</button>
     </section>
   </div><!-- /tab-feeds -->
 
@@ -450,6 +451,32 @@
       <button class="btn" id="saveTreeNameBtn">Save</button>
     </div>
     <p class="lock-hint" id="treeNameHint"></p>
+  </section>
+
+  <section class="card profile-card">
+    <div class="card-head"><div><p class="eyebrow">PRIVACY &amp; SAFETY</p><h3>Profile privacy</h3></div></div>
+    <label class="field-label" for="profileVisibilityInput">Who can view your profile and feed posts?</label>
+    <select id="profileVisibilityInput" class="admin-search">
+      <option value="public">Everyone</option>
+      <option value="followers">People I connect with</option>
+      <option value="private">Only me</option>
+    </select>
+    <p class="lock-hint">You can block or mute people from any feed post. Reports are saved for moderator review.</p>
+    <div class="profile-safety-summary" id="profileSafetySummary"></div>
+  </section>
+
+  <section class="card profile-card">
+    <div class="card-head"><div><p class="eyebrow">INBOX</p><h3>Notifications</h3></div><button class="btn secondary" id="markNotificationsReadBtn" type="button">Mark read</button></div>
+    <div id="notificationList"></div>
+  </section>
+
+  <section class="card profile-card">
+    <div class="card-head"><div><p class="eyebrow">CONNECTIONS</p><h3>PULSE Requests</h3></div></div>
+    <div class="field-with-button">
+      <input type="text" id="pulseTargetUidInput" class="admin-search" placeholder="Profile ID" maxlength="80" />
+      <button class="btn" id="sendPulseRequestBtn" type="button">Send</button>
+    </div>
+    <div id="pulseRequestList"></div>
   </section>
 
   <section class="card">
@@ -719,6 +746,19 @@
     <p class="card-sub" id="buzzModalBody"></p>
     <button class="btn" id="sendBuzzBtn" style="width:100%;margin-top:0.7rem;">Send Reminder</button>
     <button class="btn secondary" id="cancelBuzzBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
+<!-- Share caption modal -->
+<div class="modal" id="rankShareModal" hidden>
+  <div class="modal-content">
+    <button class="modal-close-x" id="closeRankShareBtn" aria-label="Close">&times;</button>
+    <h2>Share to Faith Feed</h2>
+    <p class="card-sub" id="rankSharePreview"></p>
+    <label class="field-label" for="rankShareCaption">Add a caption <span>(optional)</span></label>
+    <textarea id="rankShareCaption" class="rank-share-caption" maxlength="200" rows="3" placeholder="Say something about your progress…"></textarea>
+    <button class="btn" id="confirmRankShareBtn" style="width:100%;margin-top:0.7rem;">📤 Share to Faith Feed</button>
+    <button class="btn secondary" id="cancelRankShareBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
   </div>
 </div>
 

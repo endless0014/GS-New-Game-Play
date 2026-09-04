@@ -53,6 +53,17 @@
      reactions: { [uid]: emoji }   // one reaction per uid, matches the
                                     // "1 reaction per person" rule already
                                     // built into the local version
+   blocks/{uid}/users/{blockedUid}, mutes/{uid}/users/{mutedUid}
+     createdAt
+
+   notifications/{notificationId}
+     recipientUid, actorUid, type, entityId, read, createdAt
+
+   reports/{reportId}
+     reporterUid, targetType, targetId, reason, status, createdAt
+
+   shareHistory/{shareId}
+     uid, sourceType, sourceId, caption, createdAt
 
    sharedEvent/current
      active, activatedAt, durationHours, label, description,
@@ -247,16 +258,31 @@ async function savePublicProfile(uid, profile) {
 }
 
 async function sendPulseRequest(targetUid) {
-  const { addDoc, collection, serverTimestamp } = initFirebase._firestoreModule;
+  const { doc, getDoc, serverTimestamp, setDoc } = initFirebase._firestoreModule;
   if (!_auth.currentUser || _auth.currentUser.uid === targetUid) {
     throw new Error('You cannot send a request to yourself.');
   }
-  await addDoc(collection(_db, 'pulseRequests'), {
+  const requestId = `${_auth.currentUser.uid}_${targetUid}`;
+  const requestRef = doc(_db, 'pulseRequests', requestId);
+  const existing = await getDoc(requestRef);
+  if (existing.exists() && existing.data().status === 'pending') throw new Error('A PULSE Request is already pending.');
+  await setDoc(requestRef, {
     fromUid: _auth.currentUser.uid,
     toUid: targetUid,
+    requestKey: requestId,
     status: 'pending',
     createdAt: serverTimestamp()
   });
+}
+
+async function cancelPulseRequest(requestId) {
+  const { deleteDoc, doc, getDoc } = initFirebase._firestoreModule;
+  const requestRef = doc(_db, 'pulseRequests', requestId);
+  const snap = await getDoc(requestRef);
+  if (!snap.exists() || snap.data().fromUid !== _auth.currentUser.uid || snap.data().status !== 'pending') {
+    throw new Error('Only your pending request can be cancelled.');
+  }
+  await deleteDoc(requestRef);
 }
 
 function subscribeToPulseRequests(uid, callback) {
@@ -276,6 +302,71 @@ async function respondToPulseRequest(requestId, status) {
   const { doc, updateDoc } = initFirebase._firestoreModule;
   if (!['accepted', 'declined'].includes(status)) throw new Error('Invalid friend request status.');
   await updateDoc(doc(_db, 'pulseRequests', requestId), { status });
+}
+
+async function setUserRelationship(targetUid, relationship, enabled = true) {
+  const { collection, deleteDoc, doc, serverTimestamp, setDoc } = initFirebase._firestoreModule;
+  if (!['blocks', 'mutes'].includes(relationship)) throw new Error('Invalid relationship.');
+  const relationshipRef = doc(collection(doc(_db, relationship, _auth.currentUser.uid), 'users'), targetUid);
+  if (enabled) await setDoc(relationshipRef, { createdAt: serverTimestamp() });
+  else await deleteDoc(relationshipRef);
+}
+
+async function reportContent(targetType, targetId, reason) {
+  const { addDoc, collection, serverTimestamp } = initFirebase._firestoreModule;
+  const allowedTypes = ['profile', 'post', 'comment'];
+  const cleanReason = String(reason || '').trim().slice(0, 500);
+  if (!allowedTypes.includes(targetType) || !targetId || !cleanReason) throw new Error('Complete the report before submitting.');
+  await addDoc(collection(_db, 'reports'), {
+    reporterUid: _auth.currentUser.uid,
+    targetType,
+    targetId,
+    reason: cleanReason,
+    status: 'open',
+    createdAt: serverTimestamp()
+  });
+}
+
+function subscribeToNotifications(uid, callback) {
+  const { collection, limit, onSnapshot, orderBy, query, where } = initFirebase._firestoreModule;
+  const notificationsQuery = query(
+    collection(_db, 'notifications'),
+    where('recipientUid', '==', uid),
+    orderBy('createdAt', 'desc'),
+    limit(50)
+  );
+  return onSnapshot(notificationsQuery, snapshot => {
+    callback(snapshot.docs.map(snap => ({ id: snap.id, ...snap.data() })));
+  });
+}
+
+async function markNotificationRead(notificationId) {
+  const { doc, updateDoc } = initFirebase._firestoreModule;
+  await updateDoc(doc(_db, 'notifications', notificationId), { read: true });
+}
+
+async function loadFaithFeedPage(pageSize = 20, cursor = null) {
+  const { collection, getDocs, limit, orderBy, query, startAfter } = initFirebase._firestoreModule;
+  const constraints = [orderBy('createdAt', 'desc'), limit(Math.min(Math.max(pageSize, 1), 50))];
+  if (cursor) constraints.unshift(startAfter(cursor));
+  const snapshot = await getDocs(query(collection(_db, 'faithFeedPosts'), ...constraints));
+  return {
+    posts: snapshot.docs.map(snap => ({ id: snap.id, ...snap.data() })),
+    nextCursor: snapshot.docs.length ? snapshot.docs[snapshot.docs.length - 1] : null,
+    hasMore: snapshot.docs.length === Math.min(Math.max(pageSize, 1), 50)
+  };
+}
+
+async function recordShare(sourceType, sourceId, caption = '') {
+  const { addDoc, collection, serverTimestamp } = initFirebase._firestoreModule;
+  if (!['rank', 'teamRank', 'progress', 'verse', 'feedPost'].includes(sourceType)) throw new Error('Invalid share type.');
+  await addDoc(collection(_db, 'shareHistory'), {
+    uid: _auth.currentUser.uid,
+    sourceType,
+    sourceId: sourceId || null,
+    caption: String(caption).trim().slice(0, 200),
+    createdAt: serverTimestamp()
+  });
 }
 
 /* ============================================================
