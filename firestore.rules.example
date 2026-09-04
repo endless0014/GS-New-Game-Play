@@ -101,8 +101,8 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
-    // ---- friendRequests/{requestId} ----
-    match /friendRequests/{requestId} {
+    // ---- pulseRequests/{requestId} ----
+    match /pulseRequests/{requestId} {
       allow create: if request.auth != null
         && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.status == 'pending';

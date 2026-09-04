@@ -205,7 +205,7 @@ function subscribeToPlayerState(uid, callback) {
 }
 
 /* ============================================================
-   PUBLIC PROFILES + FRIEND REQUESTS
+  PUBLIC PROFILES + PULSE REQUESTS
    ============================================================
    These helpers are separate from private player state so a future People
    screen can expose only fields players choose to share.
@@ -246,12 +246,12 @@ async function savePublicProfile(uid, profile) {
   await setDoc(doc(_db, 'publicProfiles', uid), publicFields, { merge: true });
 }
 
-async function sendFriendRequest(targetUid) {
+async function sendPulseRequest(targetUid) {
   const { addDoc, collection, serverTimestamp } = initFirebase._firestoreModule;
   if (!_auth.currentUser || _auth.currentUser.uid === targetUid) {
     throw new Error('You cannot send a request to yourself.');
   }
-  await addDoc(collection(_db, 'friendRequests'), {
+  await addDoc(collection(_db, 'pulseRequests'), {
     fromUid: _auth.currentUser.uid,
     toUid: targetUid,
     status: 'pending',
@@ -259,10 +259,10 @@ async function sendFriendRequest(targetUid) {
   });
 }
 
-function subscribeToFriendRequests(uid, callback) {
+function subscribeToPulseRequests(uid, callback) {
   const { collection, onSnapshot, orderBy, query, where } = initFirebase._firestoreModule;
   const requestsQuery = query(
-    collection(_db, 'friendRequests'),
+    collection(_db, 'pulseRequests'),
     where('toUid', '==', uid),
     where('status', '==', 'pending'),
     orderBy('createdAt', 'desc')
@@ -272,10 +272,10 @@ function subscribeToFriendRequests(uid, callback) {
   });
 }
 
-async function respondToFriendRequest(requestId, status) {
+async function respondToPulseRequest(requestId, status) {
   const { doc, updateDoc } = initFirebase._firestoreModule;
   if (!['accepted', 'declined'].includes(status)) throw new Error('Invalid friend request status.');
-  await updateDoc(doc(_db, 'friendRequests', requestId), { status });
+  await updateDoc(doc(_db, 'pulseRequests', requestId), { status });
 }
 
 /* ============================================================
