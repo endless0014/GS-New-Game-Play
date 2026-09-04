@@ -205,6 +205,80 @@ function subscribeToPlayerState(uid, callback) {
 }
 
 /* ============================================================
+   PUBLIC PROFILES + FRIEND REQUESTS
+   ============================================================
+   These helpers are separate from private player state so a future People
+   screen can expose only fields players choose to share.
+*/
+
+async function searchPublicUsers(searchTerm) {
+  const { collection, getDocs, limit, orderBy, query, startAt, endAt } = initFirebase._firestoreModule;
+  const normalized = String(searchTerm || '').trim().toLowerCase();
+  if (normalized.length < 2) return [];
+
+  const end = `${normalized}\uf8ff`;
+  const nameQuery = query(collection(_db, 'publicProfiles'), orderBy('nameLower'), startAt(normalized), endAt(end), limit(20));
+  const emailQuery = query(collection(_db, 'publicProfiles'), orderBy('emailLower'), startAt(normalized), endAt(end), limit(20));
+  const [nameSnap, emailSnap] = await Promise.all([getDocs(nameQuery), getDocs(emailQuery)]);
+  const profiles = new Map();
+  [...nameSnap.docs, ...emailSnap.docs].forEach(snap => profiles.set(snap.id, { uid: snap.id, ...snap.data() }));
+  return [...profiles.values()];
+}
+
+async function loadPublicProfile(uid) {
+  const { doc, getDoc } = initFirebase._firestoreModule;
+  const snap = await getDoc(doc(_db, 'publicProfiles', uid));
+  return snap.exists() ? { uid: snap.id, ...snap.data() } : null;
+}
+
+async function savePublicProfile(uid, profile) {
+  const { doc, setDoc } = initFirebase._firestoreModule;
+  const publicFields = {
+    name: String(profile.name || '').trim(),
+    nameLower: String(profile.name || '').trim().toLowerCase(),
+    emailLower: String(profile.email || '').trim().toLowerCase(),
+    avatarId: profile.avatarId || null,
+    treeName: String(profile.treeName || '').trim(),
+    stage: profile.stage || 'Seed',
+    badges: Array.isArray(profile.badges) ? profile.badges : [],
+    profileVisibility: profile.profileVisibility || 'public'
+  };
+  await setDoc(doc(_db, 'publicProfiles', uid), publicFields, { merge: true });
+}
+
+async function sendFriendRequest(targetUid) {
+  const { addDoc, collection, serverTimestamp } = initFirebase._firestoreModule;
+  if (!_auth.currentUser || _auth.currentUser.uid === targetUid) {
+    throw new Error('You cannot send a request to yourself.');
+  }
+  await addDoc(collection(_db, 'friendRequests'), {
+    fromUid: _auth.currentUser.uid,
+    toUid: targetUid,
+    status: 'pending',
+    createdAt: serverTimestamp()
+  });
+}
+
+function subscribeToFriendRequests(uid, callback) {
+  const { collection, onSnapshot, orderBy, query, where } = initFirebase._firestoreModule;
+  const requestsQuery = query(
+    collection(_db, 'friendRequests'),
+    where('toUid', '==', uid),
+    where('status', '==', 'pending'),
+    orderBy('createdAt', 'desc')
+  );
+  return onSnapshot(requestsQuery, snapshot => {
+    callback(snapshot.docs.map(snap => ({ id: snap.id, ...snap.data() })));
+  });
+}
+
+async function respondToFriendRequest(requestId, status) {
+  const { doc, updateDoc } = initFirebase._firestoreModule;
+  if (!['accepted', 'declined'].includes(status)) throw new Error('Invalid friend request status.');
+  await updateDoc(doc(_db, 'friendRequests', requestId), { status });
+}
+
+/* ============================================================
    ADMIN DASHBOARD — role changes, resets, deletes
    ============================================================
    Every one of these MUST also be restricted by Firestore Security
