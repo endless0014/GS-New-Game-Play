@@ -1249,6 +1249,8 @@ function checkLeadershipTransfer() {
 /* ---------------- Ranking tab: pure leaderboards (Individual + Team) ---------------- */
 let rankingView = 'individual';
 let rankingMetric = 'fp'; // 'fp' | 'progress'
+let currentIndividualRankingRows = [];
+let currentTeamRankingRows = [];
 
 el('rankingIndividualBtn').addEventListener('click', () => {
   rankingView = 'individual';
@@ -1332,6 +1334,7 @@ function renderIndividualRanking() {
 
   const key = rankingMetric; // 'fp' | 'progress'
   rows.sort((a, b) => b[key] - a[key]);
+  currentIndividualRankingRows = rows;
 
   const valueLabelFn = rankingMetric === 'fp'
     ? (row => `⭐ ${row.fp} FP`)
@@ -1352,8 +1355,33 @@ function renderTeamBattle() {
   }
 
   rows.sort((a, b) => b.fruit - a.fruit);
+  currentTeamRankingRows = rows;
   renderPodiumAndList(el('teamPodiumContainer'), el('teamBattleList'), rows, row => `🍎 ${row.fruit}`);
 }
+
+function shareRanking(text, successMessage) {
+  postToFaithFeed(text, '🏆');
+  SFX.tap();
+  showToast(successMessage, 'success');
+}
+
+el('shareIndividualRankBtn').addEventListener('click', () => {
+  const rank = currentIndividualRankingRows.findIndex(row => row.isYou) + 1;
+  if (!rank) return;
+  const metric = rankingMetric === 'fp' ? 'Total FP' : 'Tree Progress';
+  const row = currentIndividualRankingRows[rank - 1];
+  shareRanking(`shared their individual rank: #${rank} • ${metric} ${row[rankingMetric]} 🏆`, 'Individual rank shared to Faith Feeds!');
+});
+
+el('shareTeamRankBtn').addEventListener('click', () => {
+  const rank = currentTeamRankingRows.findIndex(row => row.isYours) + 1;
+  if (!rank) {
+    showToast('Join or create a team before sharing a team rank.', 'warning');
+    return;
+  }
+  const row = currentTeamRankingRows[rank - 1];
+  shareRanking(`shared their team rank: #${rank} • ${row.name} • ${row.fruit} fruit 🏆`, 'Team rank shared to Faith Feeds!');
+});
 
 /* ---------------- Team modal (opened from the bottom nav) ---------------- */
 const JOINABLE_TEAMS = ['Branching Out', 'Fruitbearers', 'The Vineyard'];
