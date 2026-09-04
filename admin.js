@@ -9,6 +9,7 @@
 const STORAGE_KEY = 'growingSeedAdminSandbox_v1';
 const STAGE_LABELS = ['Seed', 'Germination', 'Seedling', 'Sapling', 'Young Tree', 'Mature Tree', 'Old Tree'];
 const ROLE_TIERS = ['user', 'moderator', 'leader', 'admin', 'superadmin'];
+const DASHBOARD_ROLES = ['moderator', 'leader', 'admin', 'superadmin'];
 const ROLE_LABELS = { user: 'User', moderator: 'Moderator', leader: 'Leader', admin: 'Admin', superadmin: 'Super Admin' };
 
 // These two accounts are permanently Super Admin — their role can never be
@@ -81,9 +82,9 @@ function generateDailyStats() {
 //                 — only a Super Admin can do either of those now.
 //   Moderator   — everything Admin has except Reset Progress.
 const PERMISSIONS = {
-  superadmin: { addPoints: true, resetPassword: true, resetProgress: true,  restore: true, view: true, delete: true, openUI: true, changeRole: true,  manageEvents: true },
-  admin:      { addPoints: true, resetPassword: true, resetProgress: true,  restore: true, view: true, delete: true, openUI: true, changeRole: false, manageEvents: false },
-  moderator:  { addPoints: true, resetPassword: true, resetProgress: false, restore: true, view: true, delete: true, openUI: true, changeRole: false, manageEvents: false }
+  superadmin: { addPoints: true, resetPassword: true, resetProgress: true,  restore: true, view: true, delete: true, openUI: true, changeRole: true,  manageEvents: true, mute: true },
+  admin:      { addPoints: true, resetPassword: true, resetProgress: true,  restore: true, view: true, delete: true, openUI: true, changeRole: false, manageEvents: false, mute: true },
+  moderator:  { addPoints: true, resetPassword: true, resetProgress: false, restore: true, view: true, delete: true, openUI: true, changeRole: false, manageEvents: false, mute: true }
 };
 
 function defaultState() {
@@ -106,7 +107,7 @@ function defaultState() {
     plainUsers[2].pendingRequestLeaderId = leader.id;
   }
 
-  return { users, deletedUsers: [], dailyStats: generateDailyStats(), viewerRole: 'admin' };
+  return { users, deletedUsers: [], mutedUsers: [], dailyStats: generateDailyStats(), viewerRole: 'admin' };
 }
 
 function loadState() {
@@ -116,8 +117,9 @@ function loadState() {
     const parsed = JSON.parse(raw);
     if (!parsed.users || !parsed.users.length) return defaultState();
     if (!parsed.dailyStats) parsed.dailyStats = generateDailyStats();
-    if (!parsed.viewerRole) parsed.viewerRole = 'admin';
+    if (!parsed.viewerRole || !DASHBOARD_ROLES.includes(parsed.viewerRole)) parsed.viewerRole = 'admin';
     if (!parsed.deletedUsers) parsed.deletedUsers = [];
+    if (!Array.isArray(parsed.mutedUsers)) parsed.mutedUsers = [];
     // Migrate any old 'player' role values to the new 'user' tier, and
     // backfill team fields for users saved before teams existed.
     parsed.users.forEach(u => {
@@ -161,8 +163,6 @@ function renderAll() {
     renderDeletedUsers();
   } else if (state.viewerRole === 'leader') {
     renderLeaderView();
-  } else if (state.viewerRole === 'user') {
-    renderUserView();
   }
   saveState();
 }
@@ -172,7 +172,7 @@ function applyViewerRoleVisibility() {
   el('adminModView').hidden = !(role === 'admin' || role === 'moderator' || role === 'superadmin');
   el('deletedUsersCard').hidden = !(role === 'admin' || role === 'moderator' || role === 'superadmin');
   el('leaderView').hidden = role !== 'leader';
-  el('userView').hidden = role !== 'user';
+  el('userView').hidden = true;
 
   const asWhoRow = el('asWhoRow');
   const asWhoSelect = el('asWhoSelect');
@@ -183,11 +183,6 @@ function applyViewerRoleVisibility() {
     const leaders = state.users.filter(u => u.role === 'leader');
     asWhoSelect.innerHTML = leaders.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')
       || '<option value="">No leaders yet</option>';
-  } else if (role === 'user') {
-    asWhoRow.hidden = false;
-    const plainUsers = state.users.filter(u => u.role === 'user');
-    asWhoSelect.innerHTML = plainUsers.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')
-      || '<option value="">No users yet</option>';
   } else {
     asWhoRow.hidden = true;
   }
@@ -247,6 +242,10 @@ function renderUsers() {
         () => resetUser(u.id)
       ));
     }
+    if (perms.mute) {
+      const muteBtn = el(`mute-${u.id}`);
+      if (muteBtn) muteBtn.addEventListener('click', () => toggleMute(u.id));
+    }
     if (perms.changeRole && !u.roleLocked) {
       const roleSelect = el(`roleSelect-${u.id}`);
       if (roleSelect) roleSelect.addEventListener('change', () => updateRole(u.id, roleSelect.value));
@@ -256,6 +255,7 @@ function renderUsers() {
 
 function userCardHtml(u) {
   const perms = PERMISSIONS[state.viewerRole] || PERMISSIONS.moderator;
+  const isMuted = state.mutedUsers.includes(u.id);
   const roleOptions = ROLE_TIERS.map(tier =>
     `<option value="${tier}" ${u.role === tier ? 'selected' : ''}>${ROLE_LABELS[tier]}</option>`
   ).join('');
@@ -295,9 +295,25 @@ function userCardHtml(u) {
         <button id="resetpw-${u.id}">Reset Password</button>
         <button id="delete-${u.id}" class="danger-action" ${u.roleLocked ? 'disabled title="Super Admin accounts cannot be deleted"' : ''}>Delete</button>
         <button id="reset-${u.id}" class="danger-action" ${perms.resetProgress ? '' : 'disabled title="Only Admins and Super Admins can reset progress"'}>Reset Progress</button>
+        ${perms.mute ? `<button id="mute-${u.id}" class="${isMuted ? 'muted-action' : ''}">${isMuted ? 'Unmute' : 'Mute'}</button>` : ''}
       </div>
     </div>
   `;
+}
+
+function toggleMute(id) {
+  const user = state.users.find(x => x.id === id);
+  if (!user) return;
+  const index = state.mutedUsers.indexOf(id);
+  if (index === -1) {
+    state.mutedUsers.push(id);
+    showToast(`${user.name} has been muted.`, 'info');
+  } else {
+    state.mutedUsers.splice(index, 1);
+    showToast(`${user.name} has been unmuted.`, 'success');
+  }
+  renderUsers();
+  saveState();
 }
 
 function escapeHtml(str) {
@@ -579,7 +595,7 @@ function updateViewerRoleNote() {
   } else if (state.viewerRole === 'leader') {
     note.textContent = 'You are previewing as a Team Leader — you can see your team and send reminders.';
   } else {
-    note.textContent = 'You are previewing as a User — you can request to join a team led by someone else.';
+    note.textContent = 'You are previewing as an authorized dashboard role.';
   }
 }
 

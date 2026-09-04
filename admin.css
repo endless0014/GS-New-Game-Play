@@ -240,6 +240,7 @@
 
 .user-actions button:hover { background: var(--accent-soft); }
 .user-actions button.danger-action { color: var(--danger); }
+.user-actions button.muted-action { background: #e3edfd; color: #2856a5; }
 
 .empty-state {
   text-align: center;
