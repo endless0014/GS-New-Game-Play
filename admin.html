@@ -14,12 +14,16 @@
 <div class="app-shell admin-shell">
 
   <header class="app-header admin-header">
-    <a href="index.html" class="admin-back">← Back to game</a>
-    <h1>🛡️ Admin Dashboard</h1>
-    <p>Sample / demo only — this data is local mock data, not connected to real players.</p>
+    <div class="admin-header-topline">
+      <a href="index.html" class="admin-back">← Back to game</a>
+      <span class="admin-environment">LOCAL DEMO</span>
+    </div>
+    <p class="admin-kicker">OPERATIONS CENTER</p>
+    <h1>Admin Dashboard</h1>
+    <p>Manage players, review growth, and keep the community moving.</p>
   </header>
 
-  <section class="card viewer-role-card">
+  <section class="card viewer-role-card admin-section-wide">
     <div class="card-head">
       <h3>Previewing as</h3>
       <select id="viewerRoleSelect" class="admin-search" style="max-width:160px;">
@@ -38,11 +42,11 @@
     </div>
   </section>
 
-  <section class="card">
+  <section class="card admin-section-wide admin-stats-card">
     <div class="stat-grid" id="statGrid"></div>
   </section>
 
-  <section class="card">
+  <section class="card admin-section-wide">
     <div class="card-head">
       <h3>📈 Analytics</h3>
     </div>
@@ -63,7 +67,7 @@
     <div class="task-breakdown" id="taskBreakdown"></div>
   </section>
 
-  <section class="card" id="eventControlCard" hidden>
+  <section class="card admin-section-wide" id="eventControlCard" hidden>
     <div class="card-head"><h3>🌟 Seasonal Events</h3></div>
     <p class="card-sub">Only Super Admins can activate events. Nothing is active by default — this is an opt-in bonus, not a scheduled one.</p>
 
@@ -73,7 +77,7 @@
     <button class="btn secondary" id="deactivateEventBtn" style="width:100%;margin-top:0.5rem;" hidden>Deactivate Now</button>
   </section>
 
-  <section class="card" id="adminModView">
+  <section class="card admin-section-wide" id="adminModView">
     <div class="card-head">
       <h3>Players</h3>
       <button class="btn secondary" id="addTestUserBtn">+ Add Demo Player</button>
@@ -95,7 +99,7 @@
     <p class="empty-state" id="emptyState" hidden>No players match your search.</p>
   </section>
 
-  <section class="card" id="deletedUsersCard" hidden>
+  <section class="card admin-section-wide" id="deletedUsersCard" hidden>
     <div class="card-head"><h3>🗑️ Deleted Players</h3></div>
     <p class="card-sub">Only Admins and Moderators can restore a deleted player.</p>
     <div class="user-list" id="deletedUserList"></div>

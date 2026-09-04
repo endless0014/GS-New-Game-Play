@@ -5,13 +5,28 @@
    ============================================================ */
 
 .admin-shell {
-  max-width: 760px;
+  max-width: 1120px;
+  padding-bottom: 2rem;
 }
 
 .admin-header {
   position: relative;
   text-align: left;
+  padding: 1.5rem 1.35rem 1.7rem;
+  border-radius: 0 0 24px 24px;
+  background: linear-gradient(135deg, #163c2b 0%, #28734a 58%, #3b9e4f 100%);
+  box-shadow: 0 16px 34px rgba(22, 60, 43, 0.2);
 }
+
+.admin-header-topline { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.admin-kicker { margin: 1.8rem 0 0.35rem; color: #b9e9c5; font-size: 0.65rem; font-weight: 900; letter-spacing: 0.16em; }
+.admin-header h1 { margin: 0; color: #fff; font-size: clamp(1.8rem, 4vw, 2.7rem); letter-spacing: 0.01em; }
+.admin-header p:last-child { margin: 0.45rem 0 0; color: rgba(255,255,255,0.78); font-size: 0.86rem; }
+.admin-environment { border: 1px solid rgba(255,255,255,0.22); border-radius: 999px; color: #d8f4dd; padding: 0.32rem 0.58rem; font-size: 0.62rem; font-weight: 900; letter-spacing: 0.1em; }
+
+.admin-section-wide { width: 100%; }
+.admin-shell > .card { margin-top: 1rem; }
+.admin-stats-card { padding: 0.8rem; }
 
 .admin-back {
   display: inline-block;
@@ -74,7 +89,7 @@
   width: 100%;
 }
 
-.role-chips { display: flex; gap: 0.4rem; }
+.role-chips { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.15rem; scrollbar-width: thin; }
 
 .chip {
   border-radius: 999px;
@@ -108,7 +123,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  border: 1px solid rgba(43, 116, 65, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
+.user-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(43, 116, 65, 0.1); }
 
 .user-card-top {
   display: flex;
@@ -148,6 +166,10 @@
   padding: 0.75rem 0.9rem;
   font-size: 0.86rem;
   font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.18s ease, transform 0.18s ease;
 }
 .event-status-box.is-active {
   background: linear-gradient(135deg, #fff2c2, #ffe08a);
@@ -299,6 +321,23 @@
 .range-sep {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+@media (min-width: 900px) {
+  .admin-shell { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+  .admin-header { grid-column: 1 / -1; margin: 0 -1rem; border-radius: 0 0 24px 24px; }
+  .admin-section-wide { grid-column: 1 / -1; margin-top: 0 !important; }
+  #eventControlCard { grid-column: span 5; }
+  #adminModView { grid-column: span 7; }
+  #deletedUsersCard, #leaderView, #userView { grid-column: 1 / -1; }
+}
+
+@media (max-width: 559px) {
+  .admin-header { margin: 0 -0.75rem; }
+  .admin-header-topline { align-items: flex-start; }
+  .admin-environment { font-size: 0.55rem; }
+  .analytics-range .range-date { max-width: none; flex: 1 1 42%; }
+  .analytics-range .btn { flex: 1 1 100%; }
 }
 
 .analytics-subhead {
