@@ -255,6 +255,8 @@ button {
   padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
 }
 
+.bottom-nav[hidden] { display: none; }
+
 .bottom-nav-item {
   flex: 1;
   display: flex;

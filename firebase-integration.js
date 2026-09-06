@@ -137,7 +137,13 @@ async function connectLiveSession() {
   const connected = await initFirebase();
   if (!connected) return null;
   const { getRedirectResult } = initFirebase._authModule;
-  const redirectResult = await getRedirectResult(_auth);
+  let redirectResult = null;
+  try {
+    redirectResult = await getRedirectResult(_auth);
+  } catch (error) {
+    // A stale or interrupted redirect must not prevent a fresh login attempt.
+    console.warn('Firebase redirect result unavailable; continuing to login.', error);
+  }
   if (redirectResult?.user) return ensureUserDocument(redirectResult.user);
   return _auth.currentUser ? ensureUserDocument(_auth.currentUser) : null;
 }

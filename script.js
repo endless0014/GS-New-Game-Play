@@ -430,7 +430,7 @@ function startFirebaseSync() {
     el('appShell').hidden = false;
     el('bottomNav').hidden = false;
   }).catch(error => {
-    el('authError').textContent = 'Unable to connect to Firebase. Please try again.';
+    el('authError').textContent = getAuthErrorMessage(error);
     el('authError').hidden = false;
     console.error('Firebase unavailable.', error);
   });
