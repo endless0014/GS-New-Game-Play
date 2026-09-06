@@ -136,6 +136,9 @@ async function ensureUserDocument(user) {
 async function connectLiveSession() {
   const connected = await initFirebase();
   if (!connected) return null;
+  const { getRedirectResult } = initFirebase._authModule;
+  const redirectResult = await getRedirectResult(_auth);
+  if (redirectResult?.user) return ensureUserDocument(redirectResult.user);
   return _auth.currentUser ? ensureUserDocument(_auth.currentUser) : null;
 }
 
