@@ -151,6 +151,23 @@ async function signInWithGoogle() {
   await signInWithRedirect(_auth, new GoogleAuthProvider());
 }
 
+async function signInWithEmail(email, password) {
+  const { signInWithEmailAndPassword } = initFirebase._authModule;
+  const credential = await signInWithEmailAndPassword(_auth, email, password);
+  return ensureUserDocument(credential.user);
+}
+
+async function registerWithEmail(email, password) {
+  const { createUserWithEmailAndPassword } = initFirebase._authModule;
+  const credential = await createUserWithEmailAndPassword(_auth, email, password);
+  return ensureUserDocument(credential.user);
+}
+
+async function sendPasswordReset(email) {
+  const { sendPasswordResetEmail } = initFirebase._authModule;
+  await sendPasswordResetEmail(_auth, email);
+}
+
 async function signOutUser() {
   const { signOut } = initFirebase._authModule;
   await signOut(_auth);
@@ -465,6 +482,9 @@ async function kickMember(teamId, uid) {
 window.GrowingSeedFirebase = {
   ready: connectLiveSession(),
   signInWithGoogle,
+  signInWithEmail,
+  registerWithEmail,
+  sendPasswordReset,
   loadPlayerState,
   savePlayerState,
   subscribeToPlayerState

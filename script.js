@@ -458,6 +458,98 @@ function getGoogleSignInErrorMessage(error) {
   return messages[error?.code] || `Google sign-in failed (${error?.code || 'unknown error'}). Please try again.`;
 }
 
+function getAuthErrorMessage(error) {
+  const messages = {
+    'auth/invalid-credential': 'That email or password is incorrect.',
+    'auth/invalid-email': 'Enter a valid email address.',
+    'auth/email-already-in-use': 'That email already has an account. Try logging in instead.',
+    'auth/weak-password': 'Choose a password with at least 6 characters.',
+    'auth/user-not-found': 'No account was found for that email.',
+    'auth/operation-not-allowed': 'Email and password sign-in is not enabled in Firebase.',
+    'auth/network-request-failed': 'Firebase could not reach the network. Check your connection and try again.'
+  };
+  return messages[error?.code] || `Authentication failed (${error?.code || 'unknown error'}). Please try again.`;
+}
+
+async function finishEmailAuth(session, button) {
+  firebaseUserId = session.user.uid;
+  if (session.isNew) {
+    await window.GrowingSeedFirebase.savePlayerState(firebaseUserId, state);
+  } else {
+    const remoteState = await window.GrowingSeedFirebase.loadPlayerState(firebaseUserId);
+    if (remoteState) state = { ...state, ...remoteState };
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  firebaseSyncReady = true;
+  subscribeToRemotePlayerState(window.GrowingSeedFirebase);
+  el('authGate').hidden = true;
+  el('appShell').hidden = false;
+  el('bottomNav').hidden = false;
+  button.disabled = false;
+  render({ persist: false });
+}
+
+el('loginForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const bridge = window.GrowingSeedFirebase;
+  const button = el('emailLoginBtn');
+  button.disabled = true;
+  button.textContent = 'Logging in...';
+  el('authError').hidden = true;
+  try {
+    await bridge.ready;
+    const session = await bridge.signInWithEmail(el('loginEmail').value.trim(), el('loginPassword').value);
+    await finishEmailAuth(session, button);
+  } catch (error) {
+    console.error('Email sign-in failed.', error);
+    el('authError').textContent = getAuthErrorMessage(error);
+    el('authError').hidden = false;
+    button.disabled = false;
+    button.textContent = 'Login';
+  }
+});
+
+el('registerBtn').addEventListener('click', async () => {
+  const bridge = window.GrowingSeedFirebase;
+  const email = el('loginEmail').value.trim();
+  const password = el('loginPassword').value;
+  const button = el('registerBtn');
+  if (!email || !password) {
+    el('authError').textContent = 'Enter an email and password before registering.';
+    el('authError').hidden = false;
+    return;
+  }
+  button.disabled = true;
+  el('authError').hidden = true;
+  try {
+    await bridge.ready;
+    await finishEmailAuth(await bridge.registerWithEmail(email, password), button);
+  } catch (error) {
+    console.error('Email registration failed.', error);
+    el('authError').textContent = getAuthErrorMessage(error);
+    el('authError').hidden = false;
+    button.disabled = false;
+  }
+});
+
+el('forgotPasswordBtn').addEventListener('click', async () => {
+  const email = el('loginEmail').value.trim();
+  if (!email) {
+    el('authError').textContent = 'Enter your email first, then choose Forgot password.';
+    el('authError').hidden = false;
+    return;
+  }
+  try {
+    await window.GrowingSeedFirebase.ready;
+    await window.GrowingSeedFirebase.sendPasswordReset(email);
+    el('authError').textContent = 'Password reset instructions were sent to your email.';
+    el('authError').hidden = false;
+  } catch (error) {
+    el('authError').textContent = getAuthErrorMessage(error);
+    el('authError').hidden = false;
+  }
+});
+
 el('googleSignInBtn').addEventListener('click', async () => {
   const bridge = window.GrowingSeedFirebase;
   if (!bridge) return;

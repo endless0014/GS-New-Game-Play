@@ -4,20 +4,35 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Growing Seed — Gameplay Sandbox</title>
-<link rel="stylesheet" href="style.css?v=20260829-8" />
+<link rel="stylesheet" href="style.css?v=20260906-2" />
 </head>
 <body>
 
 <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
-<div class="modal auth-gate" id="authGate">
-  <div class="modal-content">
-    <h2>🌱 Welcome to Growing Seed</h2>
-    <p class="card-sub">Sign in with Google to save your progress securely across devices.</p>
-    <button class="btn" id="googleSignInBtn" style="width:100%;">Continue with Google</button>
+<main class="auth-page" id="authGate">
+  <section class="login-card" aria-labelledby="loginTitle">
+    <div class="login-brands" aria-label="Growing Seed partners">
+      <img src="assets/ABCF.png" alt="ABCF" class="login-brand-logo" />
+      <img src="assets/Pulse.png" alt="Pulse" class="login-brand-logo" />
+    </div>
+    <p class="login-kicker">Growing Seed</p>
+    <h1 id="loginTitle">Welcome back</h1>
+    <p class="login-copy">Grow your faith journey</p>
+    <form class="login-form" id="loginForm">
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" autocomplete="email" required />
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required />
+      <button class="btn" type="submit" id="emailLoginBtn" style="width:100%;">Login</button>
+    </form>
+    <div class="login-divider"><span>or</span></div>
+    <button class="btn google-login-btn" type="button" id="googleSignInBtn" style="width:100%;">G <span>Sign in with Google</span></button>
+    <p class="login-links">Don't have an account? <button type="button" id="registerBtn">Register here</button></p>
+    <button class="forgot-password-btn" type="button" id="forgotPasswordBtn">Forgot password?</button>
     <p class="card-sub auth-error" id="authError" hidden></p>
-  </div>
-</div>
+  </section>
+</main>
 
 <div class="app-shell" id="appShell" hidden>
 
