@@ -568,7 +568,7 @@ el('googleSignInBtn').addEventListener('click', async () => {
   button.textContent = 'Connecting…';
   try {
     await bridge.ready;
-    await finishEmailAuth(await bridge.signInWithGoogle(), button);
+    await bridge.signInWithGoogle();
   } catch (error) {
     console.error('Google sign-in failed.', error);
     el('authError').textContent = getGoogleSignInErrorMessage(error);

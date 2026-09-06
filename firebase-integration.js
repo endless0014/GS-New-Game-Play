@@ -138,14 +138,9 @@ async function connectLiveSession() {
   if (!connected) return null;
   const { getRedirectResult } = initFirebase._authModule;
   let redirectResult = null;
-  try {
-    redirectResult = await getRedirectResult(_auth);
-  } catch (error) {
-    // A stale or interrupted redirect must not prevent a fresh login attempt.
-    console.warn('Firebase redirect result unavailable; continuing to login.', error);
-  }
-  if (redirectResult?.user) return { user: redirectResult.user, isNew: false };
-  return _auth.currentUser ? { user: _auth.currentUser, isNew: false } : null;
+  redirectResult = await getRedirectResult(_auth);
+  if (redirectResult?.user) return ensureUserDocument(redirectResult.user);
+  return _auth.currentUser ? ensureUserDocument(_auth.currentUser) : null;
 }
 
 /* ============================================================
@@ -153,9 +148,8 @@ async function connectLiveSession() {
    ============================================================ */
 
 async function signInWithGoogle() {
-  const { GoogleAuthProvider, signInWithPopup } = initFirebase._authModule;
-  const result = await signInWithPopup(_auth, new GoogleAuthProvider());
-  return ensureUserDocument(result.user);
+  const { GoogleAuthProvider, signInWithRedirect } = initFirebase._authModule;
+  await signInWithRedirect(_auth, new GoogleAuthProvider());
 }
 
 async function signInWithEmail(email, password) {
