@@ -2566,6 +2566,23 @@ el('saveProfileEmailBtn').addEventListener('click', () => {
   showToast('Email saved and locked — this cannot be changed later.', 'success');
 });
 
+el('logoutBtn').addEventListener('click', async () => {
+  const button = el('logoutBtn');
+  button.disabled = true;
+  button.textContent = 'Logging out...';
+  try {
+    await window.GrowingSeedFirebase.ready;
+    await window.GrowingSeedFirebase.signOutUser();
+    window.location.reload();
+  } catch (error) {
+    console.error('Logout failed.', error);
+    button.disabled = false;
+    button.textContent = 'Log out';
+    el('authError').textContent = getAuthErrorMessage(error);
+    el('authError').hidden = false;
+  }
+});
+
 el('preferredBibleVersionInput').addEventListener('change', () => {
   state.preferredBibleVersion = el('preferredBibleVersionInput').value;
   saveState();
