@@ -282,6 +282,11 @@ const SFX = {
 
 /* ---------------- State ---------------- */
 const el = (id) => document.getElementById(id);
+['loginEmail', 'loginPassword'].forEach(id => {
+  const field = el(id);
+  field.value = '';
+  field.addEventListener('focus', () => { field.readOnly = false; }, { once: true });
+});
 let state = loadState();
 let firebaseUserId = null;
 let firebaseSyncReady = false;
@@ -414,21 +419,24 @@ function startFirebaseSync() {
       return;
     }
     firebaseUserId = session.user.uid;
-    if (session.isNew) {
-      await bridge.savePlayerState(firebaseUserId, state);
-    } else {
+    firebaseSyncReady = true;
+    el('authGate').hidden = true;
+    el('appShell').hidden = false;
+    el('bottomNav').hidden = false;
+    render({ persist: false });
+    try {
       const remoteState = await bridge.loadPlayerState(firebaseUserId);
       if (remoteState) {
         state = { ...state, ...remoteState };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         render({ persist: false });
+      } else {
+        await bridge.savePlayerState(firebaseUserId, state);
       }
+      subscribeToRemotePlayerState(bridge);
+    } catch (error) {
+      console.warn('Firebase profile sync unavailable; continuing with local progress.', error);
     }
-    firebaseSyncReady = true;
-    subscribeToRemotePlayerState(bridge);
-    el('authGate').hidden = true;
-    el('appShell').hidden = false;
-    el('bottomNav').hidden = false;
   }).catch(error => {
     el('authError').textContent = getAuthErrorMessage(error);
     el('authError').hidden = false;

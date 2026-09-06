@@ -144,8 +144,8 @@ async function connectLiveSession() {
     // A stale or interrupted redirect must not prevent a fresh login attempt.
     console.warn('Firebase redirect result unavailable; continuing to login.', error);
   }
-  if (redirectResult?.user) return ensureUserDocument(redirectResult.user);
-  return _auth.currentUser ? ensureUserDocument(_auth.currentUser) : null;
+  if (redirectResult?.user) return { user: redirectResult.user, isNew: false };
+  return _auth.currentUser ? { user: _auth.currentUser, isNew: false } : null;
 }
 
 /* ============================================================

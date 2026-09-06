@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Growing Seed — Gameplay Sandbox</title>
-<link rel="stylesheet" href="style.css?v=20260906-3" />
+<link rel="stylesheet" href="style.css?v=20260906-4" />
 </head>
 <body>
 
@@ -19,11 +19,11 @@
     <p class="login-kicker">Growing Seed</p>
     <h1 id="loginTitle">Welcome back</h1>
     <p class="login-copy">Grow your faith journey</p>
-    <form class="login-form" id="loginForm">
+    <form class="login-form" id="loginForm" autocomplete="off">
       <label for="loginEmail">Email</label>
-      <input id="loginEmail" type="email" autocomplete="email" required />
+      <input id="loginEmail" type="email" autocomplete="off" readonly required />
       <label for="loginPassword">Password</label>
-      <input id="loginPassword" type="password" autocomplete="current-password" required />
+      <input id="loginPassword" type="password" autocomplete="new-password" readonly required />
       <button class="btn" type="submit" id="emailLoginBtn" style="width:100%;">Login</button>
     </form>
     <div class="login-divider"><span>or</span></div>
@@ -789,6 +789,6 @@
 
 <script type="module" src="firebase-integration.js"></script>
 
-<script src="script.js?v=20260906-5"></script>
+<script src="script.js?v=20260906-6"></script>
 </body>
 </html>
