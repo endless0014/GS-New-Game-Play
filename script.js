@@ -2567,6 +2567,8 @@ el('saveProfileEmailBtn').addEventListener('click', () => {
 });
 
 el('logoutBtn').addEventListener('click', async () => {
+  if (!confirm('Are you sure you want to log out?')) return;
+
   const button = el('logoutBtn');
   button.disabled = true;
   button.textContent = 'Logging out...';

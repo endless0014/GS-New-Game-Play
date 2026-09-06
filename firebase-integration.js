@@ -489,6 +489,7 @@ window.GrowingSeedFirebase = {
   ready: connectLiveSession(),
   signInWithGoogle,
   signInWithEmail,
+  signOutUser,
   registerWithEmail,
   sendPasswordReset,
   loadPlayerState,

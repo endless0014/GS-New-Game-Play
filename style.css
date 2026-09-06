@@ -215,6 +215,15 @@ button {
 
 .google-login-btn:first-letter { color: #4285f4; }
 
+.profile-logout-btn {
+  width: 100%;
+  margin-top: 1rem;
+  background: var(--danger);
+  color: #fff;
+}
+
+.profile-logout-btn:hover { background: #a92f2b; }
+
 .login-links,
 .forgot-password-btn {
   font-size: 0.76rem;
