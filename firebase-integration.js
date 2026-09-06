@@ -1,26 +1,17 @@
 /* ============================================================
-   Growing Seed — Firebase Integration (PREPARED, NOT ACTIVE)
+  Growing Seed — Firebase Integration
    ============================================================
 
-   STATUS: This file is not loaded by index.html or admin.html. Nothing
-   in this project currently talks to Firebase. Everything still runs on
-   localStorage exactly as before. This file exists so that switching to
-   a real backend later is a matter of wiring, not designing from scratch.
-
-   WHY IT'S SEPARATE: keeping this out of the live app means nothing here
-   can accidentally run, half-configured, against a real project. You
-   turn this on deliberately, when you're ready, by following the
-   "HOW TO ACTIVATE" section at the bottom of this file.
+  The live app uses this module for Firebase authentication and Firestore
+  persistence. Local storage remains as a short-lived offline fallback.
 
    ============================================================
    WHAT YOU NEED BEFORE ACTIVATING
    ============================================================
    1. A Firebase project (console.firebase.google.com).
    2. Firestore Database enabled (Native mode, not Datastore mode).
-   3. Authentication enabled, with at least Email/Password turned on
-      under Authentication → Sign-in method (add Google/Apple/etc. too
-      if you want those options — the auth functions below are written
-      generically enough to extend).
+  3. Authentication enabled, with Google turned on under
+    Authentication → Sign-in method.
    4. Your project's web config object, from:
       Project Settings → General → Your apps → (Web app) → SDK setup
       and configuration → Config. Paste it into FIREBASE_CONFIG below.
@@ -74,25 +65,19 @@
 
    ============================================================ */
 
-// ---- 1. Fill this in from Firebase Console → Project Settings ----
-// Leave these placeholder strings as-is until you have real values —
-// initFirebase() below deliberately refuses to run against placeholders
-// so a half-configured copy of this file can't silently fail in a
-// confusing way.
+// ---- Live Firebase project configuration ----
 const FIREBASE_CONFIG = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME.appspot.com",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME"
+  apiKey: "AIzaSyCDWhhXmMSyMIKqF8U5FktFWsSZq9aw7I0",
+  authDomain: "newgs-809ad.firebaseapp.com",
+  projectId: "newgs-809ad",
+  storageBucket: "newgs-809ad.firebasestorage.app",
+  messagingSenderId: "596209923678",
+  appId: "1:596209923678:web:9c593f32d4f55908ea26cf",
+  measurementId: "G-FC5GNGTQ2Q"
 };
 
-// The two permanently-locked Super Admin accounts (mirrors admin.js's
-// LOCKED_SUPERADMIN_EMAILS). Keep these two lists in sync if you ever
-// change them — this copy is what the security rules example checks
-// against, so the client-side lock and the server-side lock agree.
-const LOCKED_SUPERADMIN_EMAILS = ['endlesssh0014@gmail.com', 'endlessnogu@gmail.com'];
+// These two accounts receive the locked Super Admin role on first sign-in.
+const LOCKED_SUPERADMIN_EMAILS = ['endless0014@gmail.com', 'endlessnogu@gmail.com'];
 
 let _app = null;
 let _auth = null;
@@ -102,9 +87,11 @@ function isConfigured() {
   return Object.values(FIREBASE_CONFIG).every(v => typeof v === 'string' && !v.includes('REPLACE_ME'));
 }
 
-// ---- 2. Call this once, e.g. at the top of index.html's init, only
-// after you've filled in FIREBASE_CONFIG and uncommented the script tag
-// (see "HOW TO ACTIVATE" at the bottom) ----
+function isLockedSuperAdminEmail(email) {
+  return LOCKED_SUPERADMIN_EMAILS.includes(String(email || '').trim().toLowerCase());
+}
+
+// ---- Initialize the live Firebase session ----
 async function initFirebase() {
   if (!isConfigured()) {
     console.error(
@@ -132,34 +119,34 @@ async function initFirebase() {
   return true;
 }
 
+async function ensureUserDocument(user) {
+  const existing = await loadPlayerState(user.uid);
+  if (!existing) {
+    await createUserDocument(user.uid, {
+      name: user.displayName || '',
+      email: user.email || '',
+      authType: 'google',
+      role: isLockedSuperAdminEmail(user.email) ? 'superadmin' : 'user',
+      roleLocked: isLockedSuperAdminEmail(user.email)
+    });
+  }
+  return { user, isNew: !existing };
+}
+
+async function connectLiveSession() {
+  const connected = await initFirebase();
+  if (!connected) return null;
+  return _auth.currentUser ? ensureUserDocument(_auth.currentUser) : null;
+}
+
 /* ============================================================
    AUTH
    ============================================================ */
 
-async function registerWithEmail(email, password, displayName) {
-  const { createUserWithEmailAndPassword, updateProfile } = initFirebase._authModule;
-  const cred = await createUserWithEmailAndPassword(_auth, email, password);
-  if (displayName) await updateProfile(cred.user, { displayName });
-
-  // Create the matching Firestore user doc. Role defaults to 'user' —
-  // never trust a role passed in from the client at signup time; the
-  // two Super Admin emails are promoted server-side (see the security
-  // rules example / a Cloud Function trigger, not from this client call).
-  await createUserDocument(cred.user.uid, {
-    name: displayName || '',
-    email,
-    role: 'user',
-    roleLocked: false,
-    dateJoined: new Date().toISOString().slice(0, 10)
-  });
-
-  return cred.user;
-}
-
-async function signInWithEmail(email, password) {
-  const { signInWithEmailAndPassword } = initFirebase._authModule;
-  const cred = await signInWithEmailAndPassword(_auth, email, password);
-  return cred.user;
+async function signInWithGoogle() {
+  const { GoogleAuthProvider, signInWithPopup } = initFirebase._authModule;
+  const credential = await signInWithPopup(_auth, new GoogleAuthProvider());
+  return ensureUserDocument(credential.user);
 }
 
 async function signOutUser() {
@@ -370,7 +357,7 @@ async function recordShare(sourceType, sourceId, caption = '') {
 }
 
 /* ============================================================
-   ADMIN DASHBOARD — role changes, resets, deletes
+  MODERATION — role changes, resets, deletes
    ============================================================
    Every one of these MUST also be restricted by Firestore Security
    Rules (see firestore.rules.example) — this client code only decides
@@ -471,22 +458,13 @@ async function kickMember(teamId, uid) {
   await updateDoc(doc(_db, 'teams', teamId), { memberUids: arrayRemove(uid) });
 }
 
-/* ============================================================
-   HOW TO ACTIVATE (do this later, deliberately — not now)
-   ============================================================
-   1. Fill in FIREBASE_CONFIG above with your real project values.
-   2. Deploy firestore.rules.example (rename it to firestore.rules and
-      run `firebase deploy --only firestore:rules`, or paste it into
-      Firestore → Rules in the console).
-   3. In index.html and admin.html, uncomment the line:
-        <script type="module" src="firebase-integration.js"></script>
-   4. Replace the localStorage-based loadState()/saveState() calls in
-      script.js and admin.js with the loadPlayerState() / savePlayerState()
-      / subscribeToPlayerState() functions above.
-   5. Add a real sign-in screen (or wire registerWithEmail/signInWithEmail
-      into the existing "Choose Your Seed" onboarding flow) since every
-      function above needs a real uid to operate on.
-   6. Test against a Firebase project's TEST/staging environment first,
-      not production — this hasn't been run against a live Firebase
-      project from here, only written to match the existing data shapes.
-   ============================================================ */
+// The page scripts consume this promise without needing module imports.
+// Google sign-in must be enabled in Firebase Console → Authentication.
+window.GrowingSeedFirebase = {
+  ready: connectLiveSession(),
+  signInWithGoogle,
+  loadPlayerState,
+  savePlayerState,
+  subscribeToPlayerState
+};
+window.dispatchEvent(new Event('growing-seed-firebase-ready'));

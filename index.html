@@ -10,7 +10,16 @@
 
 <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
-<div class="app-shell">
+<div class="modal auth-gate" id="authGate">
+  <div class="modal-content">
+    <h2>🌱 Welcome to Growing Seed</h2>
+    <p class="card-sub">Sign in with Google to save your progress securely across devices.</p>
+    <button class="btn" id="googleSignInBtn" style="width:100%;">Continue with Google</button>
+    <p class="card-sub auth-error" id="authError" hidden></p>
+  </div>
+</div>
+
+<div class="app-shell" id="appShell" hidden>
 
   <header class="app-header" id="appHeader">
     <div class="brand-row">
@@ -20,7 +29,7 @@
         <img src="assets/Pulse.png" alt="Pulse logo" class="brand-logo" />
       </div>
     </div>
-    <p>Gameplay sandbox — no login required, progress saves locally in this browser.</p>
+    <p>Grow your faith, one day at a time.</p>
     <div class="stats-row">
       <div class="pill">⭐ <span id="fpValue">0</span> FP</div>
       <div class="pill">🔥 Day <span id="streakValue">1</span></div>
@@ -384,14 +393,14 @@
         <button class="chip" id="rankingByProgressBtn">🌱 Tree Progress</button>
         </div>
       </div>
-      <p class="card-sub">Sample local leaderboard — for demonstration only.</p>
+      <p class="card-sub">Your ranking among Growing Seed players.</p>
       <div id="podiumContainer" class="podium"></div>
       <div id="rankingList"></div>
       <button class="btn secondary ranking-share-btn" id="shareIndividualRankBtn" type="button">📤 Share Individual Rank</button>
     </div>
 
     <div id="teamRankingPanel" hidden>
-      <p class="card-sub ranking-context" id="teamRankingNote">Sample team leaderboard, ranked by fruit collected this week.</p>
+      <p class="card-sub ranking-context" id="teamRankingNote">Teams ranked by fruit collected this week.</p>
       <div id="teamPodiumContainer" class="podium"></div>
       <div id="teamBattleList"></div>
       <button class="btn secondary ranking-share-btn" id="shareTeamRankBtn" type="button">📤 Share Team Rank</button>
@@ -504,20 +513,11 @@
     <button class="btn secondary" id="resetTreeBtn" style="width:100%;">🔄 Reset Tree &amp; Choose New Seed (1000 FP)</button>
   </section>
 
-  <!-- Test tools -->
-  <section class="test-tools">
-    <button class="btn secondary" id="addTestFpBtn">+100 FP (test)</button>
-    <button class="btn secondary" id="resetProgressBtn">Reset Progress</button>
-  </section>
-  <section class="test-tools">
-    <a href="admin.html" class="btn secondary" style="width:100%;text-align:center;text-decoration:none;">🛡️ View Admin Dashboard (sample)</a>
-  </section>
-
   </div><!-- /tab-profile -->
 
 </div><!-- /app-shell -->
 
-<nav class="bottom-nav" id="bottomNav">
+<nav class="bottom-nav" id="bottomNav" hidden>
   <button class="bottom-nav-item active" data-tab="home"><span class="bn-icon">🌱</span><span>Home</span></button>
   <button class="bottom-nav-item" data-tab="tasks"><span class="bn-icon">✅</span><span>Tasks</span></button>
   <button class="bottom-nav-item" data-tab="ranking"><span class="bn-icon">🏆</span><span>Ranking</span></button>
@@ -609,8 +609,6 @@
 
     <input type="file" accept="image/*" capture="environment" id="photoFileInput" style="display:none;" />
     <button class="btn secondary" id="choosePhotoBtn" style="width:100%;">📷 Choose Photo</button>
-    <button class="btn secondary" id="useSamplePhotoBtn" style="width:100%;margin-top:0.5rem;">Use Sample Photo (test)</button>
-
     <button class="btn" id="confirmPhotoUploadBtn" style="width:100%;margin-top:0.9rem;" disabled>Claim Reward</button>
     <button class="btn secondary" id="cancelPhotoUploadBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
   </div>
@@ -774,13 +772,7 @@
 
 <canvas id="celebrationCanvas"></canvas>
 
-<!-- Firebase integration is prepared but NOT active — everything still
-     runs on localStorage. To activate: fill in firebase-integration.js
-     with your real project config, deploy firestore.rules.example, then
-     uncomment the line below. See the "HOW TO ACTIVATE" section at the
-     bottom of firebase-integration.js for the full checklist.
 <script type="module" src="firebase-integration.js"></script>
--->
 
 <script src="script.js?v=20260829-8"></script>
 </body>

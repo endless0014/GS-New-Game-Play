@@ -27,12 +27,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---- Fill these in with the two locked accounts' actual Firebase
-    // Auth UIDs (not their emails) once they've registered ----
+    // UID checks are retained as an additional defense once the accounts
+    // exist. Email checks below handle first sign-in safely.
     function isLockedSuperAdminUid(uid) {
       return uid in [
         'REPLACE_WITH_ENDLESSSH0014_UID',
         'REPLACE_WITH_ENDLESSNOGU_UID'
+      ];
+    }
+
+    function isLockedSuperAdminEmail(email) {
+      return email in [
+        'endless0014@gmail.com',
+        'endlessnogu@gmail.com'
       ];
     }
 
@@ -80,6 +87,7 @@ service cloud.firestore {
       // Role changes: only a Super Admin, and never on a locked account.
       allow update: if isSuperAdmin()
         && !isLockedSuperAdminUid(uid)
+        && !isLockedSuperAdminEmail(resource.data.email)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
 
       // Resetting another player's progress: Admin or Super Admin only.
@@ -88,7 +96,12 @@ service cloud.firestore {
              .hasOnly(['faithPoints', 'treeProgress', 'fruitCount', 'streak']);
 
       // Creating your own user doc happens once, at registration.
-      allow create: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && ((isLockedSuperAdminEmail(request.auth.token.email)
+          && request.resource.data.role == 'superadmin'
+          && request.resource.data.roleLocked == true)
+          || (!isLockedSuperAdminEmail(request.auth.token.email)
+            && request.resource.data.role == 'user'));
 
       // Deletes should go through the soft-delete pattern (move to
       // deletedUsers) rather than a hard delete — block direct deletes

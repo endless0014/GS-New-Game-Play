@@ -831,15 +831,6 @@ button {
 .login-day.claimed { background: var(--accent); color: #fff; }
 .login-day.claimable { background: var(--accent-soft); color: var(--accent-strong); border: 2px solid var(--accent); }
 
-/* ---------------- Bottom test tools ---------------- */
-.test-tools {
-  margin: 1rem 0.9rem 0;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.test-tools .btn { flex: 1; font-size: 0.78rem; padding: 0.55rem; }
-
 /* ---------------- Verse of the Day ---------------- */
 .verse-card { background: linear-gradient(135deg, var(--accent-soft), var(--surface)); }
 

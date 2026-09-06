@@ -220,37 +220,8 @@ const CONFIG = {
 
   // Seasonal events are no longer scheduled by date here — see
   // getActiveEvent() below, which reads a shared key that only a Super
-  // Admin (from the Admin Dashboard) can turn on, for a duration they choose.
+  // Events are controlled through the shared Firebase event document.
 
-  // ---------------- Mock team activities (sandbox demo data) ----------------
-  // Standalone sample so the Team feed has something to show without a
-  // real backend — same spirit as the Admin Dashboard's mock players.
-  teamFeedSeed: [
-    { name: 'Grace M.',  action: 'prayed today',            icon: '🙏' },
-    { name: 'Daniel T.', action: 'reached Young Tree!',      icon: '🌳' },
-    { name: 'Hannah R.', action: 'shared the Gospel',        icon: '📢' },
-    { name: 'Samuel B.', action: 'grew a fruit!',            icon: '🍎' },
-    { name: 'Grace M.',  action: 'kept a 5-day streak',      icon: '🔥' },
-    { name: 'Luna',      action: 'shared something in the Faith Feed', icon: '📝' }
-  ],
-
-  // ---------------- Mock Faith Feeds (sandbox demo data) ----------------
-  // A broader, public feed — not limited to your own team — showing a
-  // wider community of players and a fuller mix of activities. Player-
-  // posted updates (manual shares or verse shares) layer on top of this
-  // in state.faithFeedPosts.
-  faithFeedSeed: [
-    { name: 'Naomi C.',   action: 'read the Bible today',        icon: '📘' },
-    { name: 'Isaac R.',   action: 'completed a daily devotion',  icon: '🕊️' },
-    { name: 'Ruth P.',    action: 'attended worship this week',  icon: '🏠' },
-    { name: 'Elijah M.',  action: 'joined a small group',        icon: '🧑‍🤝‍🧑' },
-    { name: 'Sofia G.',   action: 'reached Old Tree — full bloom!', icon: '🌳' },
-    { name: 'Noah B.',    action: 'unlocked the Steadfast badge', icon: '🛡️' },
-    { name: 'Mary J.',    action: 'shared the Gospel with a friend', icon: '📢' },
-    { name: 'Grace M.',   action: 'kept a 10-day streak',        icon: '🔥' },
-    { name: 'Daniel T.',  action: 'grew their first fruit',      icon: '🍎' },
-    { name: 'Hannah R.',  action: 'prayed for their small group', icon: '🙏' }
-  ]
 };
 
 const STORAGE_KEY = 'growingSeedSandboxState_v1';
@@ -311,6 +282,9 @@ const SFX = {
 
 /* ---------------- State ---------------- */
 let state = loadState();
+let firebaseUserId = null;
+let firebaseSyncReady = false;
+let unsubscribePlayerSync = null;
 
 function defaultState() {
   return {
@@ -351,12 +325,10 @@ function defaultState() {
     teamFeedReactions: {},   // key: feed item index -> the emoji THIS player reacted with (only one per item)
     teamFeedPosts: [],       // { uid, name, action, icon, createdAt }, newest first
     team: null,              // null | { name, isOwner, leaderName, members: [...], requests: [...] }
-    teamInvitations: [{ id: 'inv_seed_1', teamName: 'The Vineyard', inviterName: 'Isaac R.' }],
+    teamInvitations: [],
 
     // Faith Feeds — a public feed separate from Team Activities. Only
-    // player-posted content lives here; CONFIG.faithFeedSeed supplies the
-    // mock community posts, which never get persisted since they're the
-    // same every time (same pattern as teamFeedSeed).
+    // Player-created content is persisted in this account's state.
     faithFeedPosts: [],        // [{ id, uid, name, icon, text, createdAt, comments:[] }] — newest first
     faithFeedReactions: {},    // key: 'seed-{i}' or 'user-{id}' -> the emoji THIS player reacted with
     profileVisibility: 'public',
@@ -420,7 +392,90 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (firebaseSyncReady && firebaseUserId && window.GrowingSeedFirebase) {
+    window.GrowingSeedFirebase.savePlayerState(firebaseUserId, state).catch(error => {
+      console.warn('Firebase save failed; local progress is still available.', error);
+    });
+  }
 }
+
+function startFirebaseSync() {
+  const bridge = window.GrowingSeedFirebase;
+  if (!bridge) {
+    window.addEventListener('growing-seed-firebase-ready', startFirebaseSync, { once: true });
+    return;
+  }
+
+  bridge.ready.then(async session => {
+    if (!session) {
+      el('appShell').hidden = true;
+      el('authGate').hidden = false;
+      return;
+    }
+    firebaseUserId = session.user.uid;
+    if (session.isNew) {
+      await bridge.savePlayerState(firebaseUserId, state);
+    } else {
+      const remoteState = await bridge.loadPlayerState(firebaseUserId);
+      if (remoteState) {
+        state = { ...state, ...remoteState };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        render({ persist: false });
+      }
+    }
+    firebaseSyncReady = true;
+    subscribeToRemotePlayerState(bridge);
+    el('authGate').hidden = true;
+    el('appShell').hidden = false;
+    el('bottomNav').hidden = false;
+  }).catch(error => {
+    el('authError').textContent = 'Unable to connect to Firebase. Please try again.';
+    el('authError').hidden = false;
+    console.error('Firebase unavailable.', error);
+  });
+}
+
+function subscribeToRemotePlayerState(bridge) {
+  if (unsubscribePlayerSync) unsubscribePlayerSync();
+  unsubscribePlayerSync = bridge.subscribeToPlayerState(firebaseUserId, remoteState => {
+    if (!remoteState) return;
+    state = { ...state, ...remoteState };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    render({ persist: false });
+  });
+}
+
+el('googleSignInBtn').addEventListener('click', async () => {
+  const bridge = window.GrowingSeedFirebase;
+  if (!bridge) return;
+  const button = el('googleSignInBtn');
+  button.disabled = true;
+  button.textContent = 'Connecting…';
+  try {
+    const session = await bridge.signInWithGoogle();
+    firebaseUserId = session.user.uid;
+    if (session.isNew) {
+      await bridge.savePlayerState(firebaseUserId, state);
+    } else {
+      const remoteState = await bridge.loadPlayerState(firebaseUserId);
+      if (remoteState) state = { ...state, ...remoteState };
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    firebaseSyncReady = true;
+    subscribeToRemotePlayerState(bridge);
+    el('authGate').hidden = true;
+    el('appShell').hidden = false;
+    el('bottomNav').hidden = false;
+    render({ persist: false });
+  } catch (error) {
+    el('authError').textContent = error.code === 'auth/popup-closed-by-user'
+      ? 'Sign-in was cancelled.'
+      : 'Google sign-in failed. Please try again.';
+    el('authError').hidden = false;
+    button.disabled = false;
+    button.textContent = 'Continue with Google';
+  }
+});
 
 /* ---------------- Period keys (for daily/weekly faith activities) ---------------- */
 function getDateKey(d = new Date()) {
@@ -1000,23 +1055,6 @@ el('photoFileInput').addEventListener('change', (e) => {
   reader.readAsDataURL(file);
 });
 
-el('useSamplePhotoBtn').addEventListener('click', () => {
-  // Draws a small placeholder image so the upload flow can be tested
-  // without needing a real camera/file on the test device.
-  const canvas = document.createElement('canvas');
-  canvas.width = 240; canvas.height = 180;
-  const ctx = canvas.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, 240, 180);
-  grad.addColorStop(0, '#bdf7a0');
-  grad.addColorStop(1, '#3a9e4f');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 240, 180);
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.font = '16px sans-serif';
-  ctx.fillText('Sample Photo', 60, 95);
-  setPendingPhoto(canvas.toDataURL());
-});
-
 function setPendingPhoto(dataUrl) {
   pendingPhotoDataUrl = dataUrl;
   el('photoPreview').innerHTML = `<img src="${dataUrl}" alt="Uploaded proof preview" />`;
@@ -1180,13 +1218,6 @@ function selectSeedType(key) {
   }
 }
 
-/* ---------------- Ranking (sample local leaderboard) ---------------- */
-const MOCK_RANKING_NAMES = ['Grace M.', 'Daniel T.', 'Hannah R.', 'Samuel B.', 'Naomi C.'];
-const MOCK_TEAM_BATTLE = [
-  { team: 'Branching Out', fruit: 41 },
-  { team: 'Fruitbearers',  fruit: 27 }
-];
-
 // The checklist a leader can see per teammate — mirrors the real daily
 // tend cycle + faith activities, so "Buzz" can name the specific thing
 // someone hasn't done yet instead of a generic nag.
@@ -1198,9 +1229,6 @@ const TEAM_TASK_DEFS = [
   { key: 'bible',    label: 'Bible',      icon: '📘' },
   { key: 'devotion', label: 'Devotion',   icon: '🕊️' }
 ];
-
-const MEMBER_NAME_POOL = ['Grace M.', 'Daniel T.', 'Hannah R.', 'Samuel B.', 'Naomi C.', 'Isaac R.', 'Ruth P.', 'Elijah M.'];
-const REQUEST_NAME_POOL = ['Sofia G.', 'Noah B.', 'Mary J.'];
 
 // Total team size cap, leader included — so 1 leader + up to 4 regular
 // members = 5 people max on any team.
@@ -1334,18 +1362,12 @@ function renderPodiumAndList(podiumEl, listEl, rows, valueLabelFn) {
 }
 
 function renderIndividualRanking() {
-  const rows = MOCK_RANKING_NAMES.map(name => ({
-    name,
-    avatar: getAvatarForName(name),
-    fp: Math.floor(Math.random() * 600) + 50,
-    progress: Math.floor(Math.random() * CONFIG.fullBloomThreshold)
-  }));
-  rows.push({
+  const rows = [{
     name: 'You',
     fp: Math.floor(state.totalFpEarned), // lifetime earned, not current spendable balance
     progress: Math.floor(state.treeProgress),
     isYou: true
-  });
+  }];
 
   const key = rankingMetric; // 'fp' | 'progress'
   rows.sort((a, b) => b[key] - a[key]);
@@ -1360,13 +1382,13 @@ function renderIndividualRanking() {
 
 function renderTeamBattle() {
   const note = el('teamRankingNote');
-  const rows = MOCK_TEAM_BATTLE.map(t => ({ name: t.team, avatar: getAvatarForName(t.team), fruit: t.fruit, isYours: false }));
+  const rows = [];
 
   if (state.team) {
     rows.push({ name: state.team.name, avatar: getAvatarForName(state.team.name), fruit: 30 + state.fruitCount, isYours: true });
-    note.textContent = 'Sample team leaderboard, ranked by fruit collected this week.';
+    note.textContent = 'Your team ranking, based on fruit collected this week.';
   } else {
-    note.textContent = 'Join or create a team (see the Team tab below) to appear on this board.';
+    note.textContent = 'Join or create a team to appear on this board.';
   }
 
   rows.sort((a, b) => b.fruit - a.fruit);
@@ -1424,8 +1446,6 @@ el('closeRankShareBtn').addEventListener('click', closeRankShareModal);
 el('cancelRankShareBtn').addEventListener('click', closeRankShareModal);
 
 /* ---------------- Team modal (opened from the bottom nav) ---------------- */
-const JOINABLE_TEAMS = ['Branching Out', 'Fruitbearers', 'The Vineyard'];
-
 el('teamNavBtn').addEventListener('click', () => {
   // Defensive wrapper: if anything inside renderTeamModal() throws (for any
   // reason, on any device), the modal still opens and the actual error
@@ -1450,12 +1470,7 @@ function renderTeamModal() {
   if (!hasTeam) {
     renderTeamInvitations();
 
-    el('joinableTeamsList').innerHTML = JOINABLE_TEAMS.map(name => `
-      <div class="team-member-row">
-        <span class="team-member-name">🌳 ${name}</span>
-        <button class="btn secondary join-team-btn" data-team-name="${escapeHtml(name)}" style="padding:0.4rem 0.8rem;font-size:0.78rem;">Request to Join</button>
-      </div>
-    `).join('');
+    el('joinableTeamsList').innerHTML = '<p class="empty-state">No teams are available to join yet.</p>';
     return;
   }
 
@@ -1524,16 +1539,6 @@ function renderTeamInvitations() {
   `).join('');
 }
 
-// Builds the member list for a team you've JOINED (not created) — the
-// leader is included as a real roster entry (tagged isLeader) so they can
-// be buzzed just like any other teammate, rather than being an invisible
-// name with no roster row of their own.
-function makeJoinedTeamRoster(leaderName) {
-  const leader = { ...makeMockMember(leaderName), isLeader: true };
-  const peers = [makeMockMember(MEMBER_NAME_POOL[0]), makeMockMember(MEMBER_NAME_POOL[1]), makeMockMember(MEMBER_NAME_POOL[2])];
-  return [leader, ...peers];
-}
-
 el('teamInvitationsList').addEventListener('click', (e) => {
   const acceptBtn = e.target.closest('.accept-invite-btn');
   const declineBtn = e.target.closest('.decline-invite-btn');
@@ -1558,18 +1563,6 @@ el('teamInvitationsList').addEventListener('click', (e) => {
 });
 
 // Request-to-join buttons use the same delegation pattern.
-el('joinableTeamsList').addEventListener('click', (e) => {
-  const btn = e.target.closest('.join-team-btn');
-  if (!btn) return;
-  const name = btn.dataset.teamName;
-  const leaderName = MEMBER_NAME_POOL[3];
-  const members = makeJoinedTeamRoster(leaderName);
-  state.team = { name, isOwner: false, leaderName, members, requests: [] };
-  SFX.tap();
-  showToast(`You joined ${name}!`, 'success');
-  saveState();
-  renderTeamModal();
-});
 
 function renderTeamRoster() {
   if (!state.team || !Array.isArray(state.team.members)) {
@@ -1752,9 +1745,12 @@ function addTeamActivity(action, icon = '🌱') {
 }
 
 function renderTeamFeed() {
-  const seedPosts = CONFIG.teamFeedSeed.map((item, i) => ({ ...item, key: `seed-${i}` }));
   const userPosts = (state.teamFeedPosts || []).map(post => ({ ...post, key: `user-${post.id}` }));
-  const allPosts = [...userPosts, ...seedPosts];
+  const allPosts = userPosts;
+  if (!allPosts.length) {
+    el('teamFeedList').innerHTML = '<p class="empty-state">No team activity yet.</p>';
+    return;
+  }
 
   el('teamFeedList').innerHTML = allPosts.map(item => {
     const myReaction = state.teamFeedReactions[item.key];
@@ -1798,16 +1794,6 @@ el('faithFeedsNavBtn').addEventListener('click', () => {
 });
 
 function renderFaithFeeds() {
-  // Combine mock community posts (seed-{i}) with the player's own posts
-  // (user-{id}), player's posts shown first since they're newest.
-  const seedPosts = CONFIG.faithFeedSeed.map((item, i) => ({
-    key: `seed-${i}`,
-    name: item.name,
-    icon: item.icon,
-    text: item.action,
-    createdAt: new Date(Date.now() - ((i + 1) * 47 * 60000)).toISOString(),
-    comments: []
-  }));
   const userPosts = state.faithFeedPosts.map(p => ({
     key: `user-${p.id}`,
     uid: p.uid,
@@ -1818,7 +1804,7 @@ function renderFaithFeeds() {
     createdAt: p.createdAt,
     comments: Array.isArray(p.comments) ? p.comments : []
   }));
-  const allPosts = [...userPosts, ...seedPosts]
+  const allPosts = userPosts
     .filter(post => !state.blockedUsers.includes(post.uid) && !state.mutedUsers.includes(post.uid));
   const visiblePosts = allPosts.slice(0, state.feedVisibleCount);
 
@@ -2146,10 +2132,8 @@ el('leaveTeamBtn2').addEventListener('click', () => {
 });
 
 /* ---------------- Seasonal / limited-time events ---------------- */
-// Events are no longer automatic-by-date — a Super Admin has to
-// deliberately activate one from the Admin Dashboard, for a duration they
-// choose. This reads that same shared key, so nothing is active unless a
-// Super Admin turned it on, and it stops the moment the duration expires.
+// Events are controlled through the shared Firebase document and expire
+// automatically when their configured duration ends.
 const SHARED_EVENT_KEY = 'growingSeedSharedEventState_v1';
 
 function getActiveEvent() {
@@ -2496,15 +2480,6 @@ el('soundToggle').addEventListener('change', () => {
   if (state.soundEnabled) SFX.tap();
 });
 
-/* ---------------- Test tools ---------------- */
-el('addTestFpBtn').addEventListener('click', () => {
-  // Deliberately does NOT add to totalFpEarned — this is a debug convenience
-  // for testing, not real gameplay, so it shouldn't inflate the ranking stat.
-  state.faithPoints += 100;
-  showToast('+100 FP added for testing (spendable only — does not count toward ranking).', 'info');
-  render();
-});
-
 el('resetTreeBtn').addEventListener('click', () => {
   const RESET_COST = 1000;
   if (state.faithPoints < RESET_COST) {
@@ -2527,15 +2502,6 @@ el('resetTreeBtn').addEventListener('click', () => {
   seedChoiceContext = 'reset';
   el('seedChoiceModal').hidden = false;
   showToast(`Tree reset for ${RESET_COST} FP. You can rename it now.`, 'info');
-});
-
-el('resetProgressBtn').addEventListener('click', () => {
-  if (!confirm('Reset all local progress? This only clears this browser\'s saved sandbox state.')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  state = defaultState();
-  document.querySelectorAll('.tree-stage-img').forEach(elImg => elImg.classList.remove('active'));
-  render();
-  showToast('Progress reset.', 'info');
 });
 
 /* ---------------- First-fruit celebration (Canvas) ---------------- */
@@ -2589,6 +2555,7 @@ function celebrateFirstFruit() {
 }
 
 /* ---------------- Init ---------------- */
+startFirebaseSync();
 applySeedTypePalette();
 renderVerseOfDay();
 renderSeedTypeGrid();

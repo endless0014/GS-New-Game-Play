@@ -1,6 +1,6 @@
 # Growing Seed — Gameplay Sandbox
 
-A standalone, no-setup version of the core Growing Seed gameplay loop, built for testing mechanics and animations on GitHub Pages without needing your Firebase project. Progress saves to `localStorage` in the visitor's own browser — there's no login, no backend, no shared data.
+A production gameplay experience for Growing Seed. The live game requires Google authentication through Firebase and mirrors gameplay state to Firestore, with `localStorage` used only as a short-lived local cache.
 
 ## Modal close-button fix, team size cap, leadership auto-transfer, Feed as its own modal (latest update)
 
@@ -74,7 +74,7 @@ Every flow re-verified end-to-end: open Team → see invitation → Accept (lead
 
 **4. Re-verified the Team modal end-to-end** after a report that it wasn't responding to clicks. I ran an exhaustive click-through of every single control inside it — open, Create Team, cancel, confirm, all three tabs, Buzz, cancel, Kick, close — against the current code, plus a fresh-visitor simulation (new browser storage, onboarding → straight to Team), and everything responded correctly with zero console errors in every pass. If it's still not responding on your end after grabbing this update, that's worth flagging with specifics (which button, which browser/device) since it's not reproducing here.
 
-**5. Firebase integration scaffold — prepared, not active.** Added `firebase-integration.js` (Auth, Firestore reads/writes, team/event functions mapped to the current data model) and `firestore.rules.example` (security rules mirroring the Super Admin lock and permission matrix). Neither is wired into `index.html` or `admin.html` — both are referenced only in a commented-out `<script>` tag, so nothing changes until you deliberately fill in your project config and uncomment it. Full activation checklist is at the bottom of `firebase-integration.js`. Since I don't have network access to your actual Firebase project, this hasn't been tested against a live backend — only written to match the existing local data shapes; test it against a staging project before production.
+**5. Firebase integration is active for gameplay.** `firebase-integration.js` connects the game to the configured Firebase project using Google Auth and Firestore. Enable Google as a sign-in provider and deploy the rules in `firestore.rules.example` before using shared data in production.
 
 ## Team feature rebuilt as its own bottom-nav modal (latest update)
 
