@@ -144,9 +144,8 @@ async function connectLiveSession() {
    ============================================================ */
 
 async function signInWithGoogle() {
-  const { GoogleAuthProvider, signInWithPopup } = initFirebase._authModule;
-  const credential = await signInWithPopup(_auth, new GoogleAuthProvider());
-  return ensureUserDocument(credential.user);
+  const { GoogleAuthProvider, signInWithRedirect } = initFirebase._authModule;
+  await signInWithRedirect(_auth, new GoogleAuthProvider());
 }
 
 async function signOutUser() {

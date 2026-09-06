@@ -465,21 +465,8 @@ el('googleSignInBtn').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Connecting…';
   try {
-    const session = await bridge.signInWithGoogle();
-    firebaseUserId = session.user.uid;
-    if (session.isNew) {
-      await bridge.savePlayerState(firebaseUserId, state);
-    } else {
-      const remoteState = await bridge.loadPlayerState(firebaseUserId);
-      if (remoteState) state = { ...state, ...remoteState };
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    firebaseSyncReady = true;
-    subscribeToRemotePlayerState(bridge);
-    el('authGate').hidden = true;
-    el('appShell').hidden = false;
-    el('bottomNav').hidden = false;
-    render({ persist: false });
+    await bridge.ready;
+    await bridge.signInWithGoogle();
   } catch (error) {
     console.error('Google sign-in failed.', error);
     el('authError').textContent = getGoogleSignInErrorMessage(error);
