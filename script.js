@@ -2575,7 +2575,20 @@ el('logoutBtn').addEventListener('click', async () => {
   try {
     await window.GrowingSeedFirebase.ready;
     await window.GrowingSeedFirebase.signOutUser();
-    window.location.reload();
+    if (unsubscribePlayerSync) {
+      unsubscribePlayerSync();
+      unsubscribePlayerSync = null;
+    }
+    firebaseUserId = null;
+    firebaseSyncReady = false;
+    el('appShell').hidden = true;
+    el('bottomNav').hidden = true;
+    el('authGate').hidden = false;
+    el('loginEmail').value = '';
+    el('loginPassword').value = '';
+    el('authError').hidden = true;
+    button.disabled = false;
+    button.textContent = 'Log out';
   } catch (error) {
     console.error('Logout failed.', error);
     button.disabled = false;
