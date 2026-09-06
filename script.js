@@ -281,6 +281,7 @@ const SFX = {
 };
 
 /* ---------------- State ---------------- */
+const el = (id) => document.getElementById(id);
 let state = loadState();
 let firebaseUserId = null;
 let firebaseSyncReady = false;
@@ -544,7 +545,6 @@ function getNextStageThreshold() {
 }
 
 /* ---------------- DOM refs ---------------- */
-const el = (id) => document.getElementById(id);
 const fpValueEl = el('fpValue');
 const streakValueEl = el('streakValue');
 const fruitValueEl = el('fruitValue');
