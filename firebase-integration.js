@@ -139,8 +139,8 @@ async function connectLiveSession() {
   const { getRedirectResult } = initFirebase._authModule;
   let redirectResult = null;
   redirectResult = await getRedirectResult(_auth);
-  if (redirectResult?.user) return ensureUserDocument(redirectResult.user);
-  return _auth.currentUser ? ensureUserDocument(_auth.currentUser) : null;
+  if (redirectResult?.user) return { user: redirectResult.user, isNew: false };
+  return _auth.currentUser ? { user: _auth.currentUser, isNew: false } : null;
 }
 
 /* ============================================================
@@ -155,7 +155,7 @@ async function signInWithGoogle() {
 async function signInWithEmail(email, password) {
   const { signInWithEmailAndPassword } = initFirebase._authModule;
   const credential = await signInWithEmailAndPassword(_auth, email, password);
-  return ensureUserDocument(credential.user);
+  return { user: credential.user, isNew: false };
 }
 
 async function registerWithEmail(email, password) {

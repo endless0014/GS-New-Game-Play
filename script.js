@@ -482,11 +482,15 @@ function getAuthErrorMessage(error) {
 
 async function finishEmailAuth(session, button) {
   firebaseUserId = session.user.uid;
-  if (session.isNew) {
-    await window.GrowingSeedFirebase.savePlayerState(firebaseUserId, state);
-  } else {
-    const remoteState = await window.GrowingSeedFirebase.loadPlayerState(firebaseUserId);
-    if (remoteState) state = { ...state, ...remoteState };
+  try {
+    if (session.isNew) {
+      await window.GrowingSeedFirebase.savePlayerState(firebaseUserId, state);
+    } else {
+      const remoteState = await window.GrowingSeedFirebase.loadPlayerState(firebaseUserId);
+      if (remoteState) state = { ...state, ...remoteState };
+    }
+  } catch (error) {
+    console.warn('Firebase profile sync unavailable; continuing with local progress.', error);
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   firebaseSyncReady = true;
