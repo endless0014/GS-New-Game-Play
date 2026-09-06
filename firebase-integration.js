@@ -153,9 +153,8 @@ async function connectLiveSession() {
    ============================================================ */
 
 async function signInWithGoogle() {
-  const { GoogleAuthProvider, signInWithPopup } = initFirebase._authModule;
-  const result = await signInWithPopup(_auth, new GoogleAuthProvider());
-  return ensureUserDocument(result.user);
+  const { GoogleAuthProvider, signInWithRedirect } = initFirebase._authModule;
+  await signInWithRedirect(_auth, new GoogleAuthProvider());
 }
 
 async function signInWithEmail(email, password) {
