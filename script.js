@@ -446,6 +446,18 @@ function subscribeToRemotePlayerState(bridge) {
   });
 }
 
+function getGoogleSignInErrorMessage(error) {
+  const messages = {
+    'auth/unauthorized-domain': 'This site is not authorized in Firebase. Add the current site domain under Firebase Authentication > Settings > Authorized domains.',
+    'auth/operation-not-allowed': 'Google sign-in is not enabled. Enable Google under Firebase Authentication > Sign-in method.',
+    'auth/popup-blocked': 'Your browser blocked the Google sign-in popup. Allow popups for this site and try again.',
+    'auth/popup-closed-by-user': 'Sign-in was cancelled.',
+    'auth/network-request-failed': 'Firebase could not reach the network. Check your connection and try again.',
+    'auth/invalid-api-key': 'The Firebase API key is invalid. Check FIREBASE_CONFIG in firebase-integration.js.'
+  };
+  return messages[error?.code] || `Google sign-in failed (${error?.code || 'unknown error'}). Please try again.`;
+}
+
 el('googleSignInBtn').addEventListener('click', async () => {
   const bridge = window.GrowingSeedFirebase;
   if (!bridge) return;
@@ -469,9 +481,8 @@ el('googleSignInBtn').addEventListener('click', async () => {
     el('bottomNav').hidden = false;
     render({ persist: false });
   } catch (error) {
-    el('authError').textContent = error.code === 'auth/popup-closed-by-user'
-      ? 'Sign-in was cancelled.'
-      : 'Google sign-in failed. Please try again.';
+    console.error('Google sign-in failed.', error);
+    el('authError').textContent = getGoogleSignInErrorMessage(error);
     el('authError').hidden = false;
     button.disabled = false;
     button.textContent = 'Continue with Google';
