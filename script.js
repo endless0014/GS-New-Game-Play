@@ -437,6 +437,7 @@ function startFirebaseSync() {
     } catch (error) {
       console.warn('Firebase profile sync unavailable; continuing with local progress.', error);
     }
+    scheduleInitialModal();
   }).catch(error => {
     el('authError').textContent = getAuthErrorMessage(error);
     el('authError').hidden = false;
@@ -495,6 +496,7 @@ async function finishEmailAuth(session, button) {
   el('bottomNav').hidden = false;
   button.disabled = false;
   render({ persist: false });
+  scheduleInitialModal();
 }
 
 el('loginForm').addEventListener('submit', async event => {
@@ -2653,6 +2655,19 @@ function celebrateFirstFruit() {
 }
 
 /* ---------------- Init ---------------- */
+function scheduleInitialModal() {
+  if (!el('authGate').hidden) return;
+
+  if (!state.hasChosenSeedType) {
+    // First-ever visit: choosing a seed comes before anything else,
+    // including the daily reward popup.
+    seedChoiceContext = 'onboarding';
+    setTimeout(() => { el('seedChoiceModal').hidden = false; }, 400);
+  } else if (!hasClaimedToday()) {
+    setTimeout(() => { el('dailyLoginModal').hidden = false; }, 400);
+  }
+}
+
 startFirebaseSync();
 applySeedTypePalette();
 renderVerseOfDay();
@@ -2668,12 +2683,3 @@ renderNameLocks();
 el('soundToggle').checked = state.soundEnabled;
 renderRanking();
 render({ persist: false });
-
-if (!state.hasChosenSeedType) {
-  // First-ever visit: choosing a seed comes before anything else,
-  // including the daily reward popup.
-  seedChoiceContext = 'onboarding';
-  setTimeout(() => { el('seedChoiceModal').hidden = false; }, 400);
-} else if (!hasClaimedToday()) {
-  setTimeout(() => { el('dailyLoginModal').hidden = false; }, 400);
-}
