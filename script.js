@@ -293,6 +293,7 @@ const el = (id) => document.getElementById(id);
 });
 let state = loadState();
 let firebaseUserId = null;
+let firebaseAuthEmail = '';
 let firebaseSyncReady = false;
 let unsubscribePlayerSync = null;
 let authMode = 'login';
@@ -427,6 +428,7 @@ function startFirebaseSync() {
       return;
     }
     firebaseUserId = session.user.uid;
+    firebaseAuthEmail = session.user.email || '';
     state.profileEmail = session.user.email || state.profileEmail;
     firebaseSyncReady = true;
     el('authGate').hidden = true;
@@ -438,6 +440,9 @@ function startFirebaseSync() {
       if (remoteState) {
         state = { ...state, ...remoteState };
         state.profileEmail = session.user.email || state.profileEmail;
+        if (firebaseAuthEmail && remoteState.profileEmail !== firebaseAuthEmail) {
+          await bridge.savePlayerState(firebaseUserId, { profileEmail: firebaseAuthEmail });
+        }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         render({ persist: false });
       } else {
@@ -460,6 +465,7 @@ function subscribeToRemotePlayerState(bridge) {
   unsubscribePlayerSync = bridge.subscribeToPlayerState(firebaseUserId, remoteState => {
     if (!remoteState) return;
     state = { ...state, ...remoteState };
+    if (firebaseAuthEmail) state.profileEmail = firebaseAuthEmail;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     render({ persist: false });
   });
@@ -519,6 +525,7 @@ function renderAuthMode() {
 
 async function finishEmailAuth(session, button, profileNames = {}) {
   firebaseUserId = session.user.uid;
+  firebaseAuthEmail = session.user.email || '';
   state.profileEmail = session.user.email || state.profileEmail;
   try {
     if (session.isNew) {
@@ -532,6 +539,9 @@ async function finishEmailAuth(session, button, profileNames = {}) {
       if (remoteState) {
         state = { ...state, ...remoteState };
         state.profileEmail = session.user.email || state.profileEmail;
+        if (firebaseAuthEmail && remoteState.profileEmail !== firebaseAuthEmail) {
+          await window.GrowingSeedFirebase.savePlayerState(firebaseUserId, { profileEmail: firebaseAuthEmail });
+        }
       }
     }
   } catch (error) {
