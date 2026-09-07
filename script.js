@@ -427,6 +427,7 @@ function startFirebaseSync() {
       return;
     }
     firebaseUserId = session.user.uid;
+    state.profileEmail = session.user.email || state.profileEmail;
     firebaseSyncReady = true;
     el('authGate').hidden = true;
     el('appShell').hidden = false;
@@ -436,6 +437,7 @@ function startFirebaseSync() {
       const remoteState = await bridge.loadPlayerState(firebaseUserId);
       if (remoteState) {
         state = { ...state, ...remoteState };
+        state.profileEmail = session.user.email || state.profileEmail;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         render({ persist: false });
       } else {
@@ -517,15 +519,20 @@ function renderAuthMode() {
 
 async function finishEmailAuth(session, button, profileNames = {}) {
   firebaseUserId = session.user.uid;
+  state.profileEmail = session.user.email || state.profileEmail;
   try {
     if (session.isNew) {
       state.firstName = profileNames.firstName || '';
       state.lastName = profileNames.lastName || '';
       state.profileName = [state.firstName, state.lastName].filter(Boolean).join(' ');
+      state.profileEmail = session.user.email || state.profileEmail;
       await window.GrowingSeedFirebase.savePlayerState(firebaseUserId, state);
     } else {
       const remoteState = await window.GrowingSeedFirebase.loadPlayerState(firebaseUserId);
-      if (remoteState) state = { ...state, ...remoteState };
+      if (remoteState) {
+        state = { ...state, ...remoteState };
+        state.profileEmail = session.user.email || state.profileEmail;
+      }
     }
   } catch (error) {
     console.warn('Firebase profile sync unavailable; continuing with local progress.', error);
@@ -2405,16 +2412,12 @@ function renderNameLocks() {
     profileHint.textContent = '🔒 Locked — you\'ve used your one allowed change.';
   }
 
-  // Email: set once, then permanently locked — no edits at all, unlike
-  // profile name or tree name, which both allow at least one change.
+  // Email comes from Firebase registration and is never editable in Profile.
   const emailInput = el('profileEmailInput');
   const emailHint = el('profileEmailHint');
-  const emailLocked = !!state.profileEmail;
-  emailInput.disabled = emailLocked;
-  el('saveProfileEmailBtn').disabled = emailLocked;
-  emailHint.textContent = emailLocked
-    ? '🔒 Locked — email cannot be changed once set.'
-    : 'Set once when you register — this cannot be changed afterward.';
+  emailInput.readOnly = true;
+  emailInput.value = state.profileEmail || '';
+  emailHint.textContent = 'This email comes from your registration and cannot be changed here.';
 }
 
 function renderDateJoined() {
@@ -2595,16 +2598,6 @@ el('saveProfileNameBtn').addEventListener('click', () => {
   renderNameLocks();
   saveState();
   showToast(isFirstSet ? 'Profile name saved.' : 'Profile name changed — that was your one allowed change.', 'success');
-});
-
-el('saveProfileEmailBtn').addEventListener('click', () => {
-  if (state.profileEmail) return; // extra guard beyond the disabled attribute
-  const value = el('profileEmailInput').value.trim();
-  if (!value) { showToast('Enter an email first.', 'warning'); return; }
-  state.profileEmail = value;
-  renderNameLocks();
-  saveState();
-  showToast('Email saved and locked — this cannot be changed later.', 'success');
 });
 
 el('logoutBtn').addEventListener('click', async () => {
