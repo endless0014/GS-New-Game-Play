@@ -38,7 +38,7 @@ service cloud.firestore {
 
     function isLockedSuperAdminEmail(email) {
       return email in [
-        'endless0014@gmail.com',
+        'endlesssh0014@gmail.com',
         'endlessnogu@gmail.com'
       ];
     }

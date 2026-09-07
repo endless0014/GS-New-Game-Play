@@ -77,7 +77,7 @@ const FIREBASE_CONFIG = {
 };
 
 // These two accounts receive the locked Super Admin role on first sign-in.
-const LOCKED_SUPERADMIN_EMAILS = ['endless0014@gmail.com', 'endlessnogu@gmail.com'];
+const LOCKED_SUPERADMIN_EMAILS = ['endlesssh0014@gmail.com', 'endlessnogu@gmail.com'];
 
 let _app = null;
 let _auth = null;
