@@ -299,6 +299,7 @@ let authMode = 'login';
 
 function defaultState() {
   return {
+    role: 'user',
     faithPoints: 20,
     totalFpEarned: 20, // cumulative lifetime FP earned — used for ranking, never decreases when spent
     treeProgress: 0,

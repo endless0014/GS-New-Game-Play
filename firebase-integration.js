@@ -175,7 +175,7 @@ async function signInWithGoogle(firstName = '', lastName = '') {
 async function signInWithEmail(email, password) {
   const { signInWithEmailAndPassword } = initFirebase._authModule;
   const credential = await signInWithEmailAndPassword(_auth, email, password);
-  return { user: credential.user, isNew: false };
+  return ensureUserDocument(credential.user);
 }
 
 async function registerWithEmail(email, password, firstName, lastName) {
@@ -232,6 +232,17 @@ async function savePlayerState(uid, partialState) {
   // merge: true means this behaves like Object.assign, not a full
   // overwrite — mirrors how localStorage's saveState() currently works.
   await setDoc(doc(_db, 'users', uid), partialState, { merge: true });
+}
+
+async function getCurrentUserRole() {
+  if (!_auth?.currentUser) return null;
+  const profile = await loadPlayerState(_auth.currentUser.uid);
+  return profile?.role || 'user';
+}
+
+function roleAtLeast(role, requiredRole) {
+  const levels = { user: 0, leader: 1, moderator: 2, admin: 3, superadmin: 4 };
+  return (levels[role] ?? -1) >= (levels[requiredRole] ?? 0);
 }
 
 // Real-time sync — call once per session. Returns an unsubscribe function.
@@ -509,6 +520,14 @@ window.GrowingSeedFirebase = {
   sendPasswordReset,
   loadPlayerState,
   savePlayerState,
-  subscribeToPlayerState
+  subscribeToPlayerState,
+  getCurrentUserRole,
+  roleAtLeast,
+  adminUpdateUserRole,
+  adminResetUserProgress,
+  adminAddPoints,
+  adminDeleteUser,
+  adminRestoreUser,
+  setSharedEvent
 };
 window.dispatchEvent(new Event('growing-seed-firebase-ready'));
