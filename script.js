@@ -414,6 +414,12 @@ function saveState() {
   }
 }
 
+function updateAdminDashboardLink() {
+  const link = el('adminDashboardLink');
+  if (!link) return;
+  link.hidden = !['moderator', 'leader', 'admin', 'superadmin'].includes(state.role);
+}
+
 function startFirebaseSync() {
   const bridge = window.GrowingSeedFirebase;
   if (!bridge) {
@@ -430,6 +436,7 @@ function startFirebaseSync() {
     firebaseUserId = session.user.uid;
     firebaseAuthEmail = session.user.email || '';
     state.profileEmail = session.user.email || state.profileEmail;
+    updateAdminDashboardLink();
     firebaseSyncReady = true;
     el('authGate').hidden = true;
     el('appShell').hidden = false;
@@ -444,9 +451,11 @@ function startFirebaseSync() {
           await bridge.savePlayerState(firebaseUserId, { profileEmail: firebaseAuthEmail });
         }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        updateAdminDashboardLink();
         render({ persist: false });
       } else {
         await bridge.savePlayerState(firebaseUserId, state);
+        updateAdminDashboardLink();
       }
       subscribeToRemotePlayerState(bridge);
     } catch (error) {
@@ -542,6 +551,7 @@ async function finishEmailAuth(session, button, profileNames = {}) {
         if (firebaseAuthEmail && remoteState.profileEmail !== firebaseAuthEmail) {
           await window.GrowingSeedFirebase.savePlayerState(firebaseUserId, { profileEmail: firebaseAuthEmail });
         }
+        updateAdminDashboardLink();
       }
     }
   } catch (error) {

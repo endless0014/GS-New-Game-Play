@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Growing Seed — Admin Dashboard (Sample)</title>
+<link rel="stylesheet" href="style.css?v=20260829-8" />
+<link rel="stylesheet" href="admin.css?v=20260829-8" />
+</head>
+<body>
+
+<div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+<div class="card admin-section-wide" id="adminAccessGate" hidden>
+  <h1>Admin Dashboard</h1>
+  <p class="card-sub" id="adminAccessMessage">Checking your account access...</p>
+  <a href="index.html" class="btn secondary" style="display:block;width:100%;text-align:center;text-decoration:none;">Back to game</a>
+</div>
+
+<div class="app-shell admin-shell" id="adminShell" hidden>
+
+  <header class="app-header admin-header">
+    <div class="admin-header-topline">
+      <a href="index.html" class="admin-back">← Back to game</a>
+      <span class="admin-environment">LOCAL DEMO</span>
+    </div>
+    <p class="admin-kicker">OPERATIONS CENTER</p>
+    <h1>Admin Dashboard</h1>
+    <p>Manage players, review growth, and keep the community moving.</p>
+  </header>
+
+  <section class="card viewer-role-card admin-section-wide">
+    <div class="card-head">
+      <h3>Previewing as</h3>
+      <select id="viewerRoleSelect" class="admin-search" style="max-width:160px;">
+        <option value="user">User</option>
+        <option value="moderator">Moderator</option>
+        <option value="leader">Leader</option>
+        <option value="admin">Admin</option>
+        <option value="superadmin" selected>Super Admin</option>
+      </select>
+    </div>
+    <p class="card-sub" id="viewerRoleNote">Admins can change anyone's role. Other roles can view this dashboard but role controls are locked — try switching the dropdown above to see it change.</p>
+    <div id="asWhoRow" class="as-who-row" hidden>
+      <label>Specifically, you are:
+        <select id="asWhoSelect" class="admin-search"></select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card admin-section-wide admin-stats-card">
+    <div class="stat-grid" id="statGrid"></div>
+  </section>
+
+  <section class="card admin-section-wide">
+    <div class="card-head">
+      <h3>📈 Analytics</h3>
+    </div>
+    <div class="analytics-range">
+      <button class="chip active" id="last7Btn">Last 7 days</button>
+      <input type="date" id="rangeStart" class="admin-search range-date" />
+      <span class="range-sep">to</span>
+      <input type="date" id="rangeEnd" class="admin-search range-date" />
+      <button class="btn secondary" id="applyRangeBtn">Apply</button>
+    </div>
+
+    <h4 class="analytics-subhead">Logins per day</h4>
+    <canvas id="loginChart" height="160"></canvas>
+
+    <h4 class="analytics-subhead">Task completions per day</h4>
+    <canvas id="taskChart" height="160"></canvas>
+
+    <div class="task-breakdown" id="taskBreakdown"></div>
+  </section>
+
+  <section class="card admin-section-wide" id="eventControlCard" hidden>
+    <div class="card-head"><h3>🌟 Seasonal Events</h3></div>
+    <p class="card-sub">Only Super Admins can activate events. Nothing is active by default — this is an opt-in bonus, not a scheduled one.</p>
+
+    <div class="event-status-box" id="eventStatusBox"></div>
+
+    <button class="btn" id="activateEventBtn" style="width:100%;margin-top:0.7rem;">Activate Growth Sprint Week</button>
+    <button class="btn secondary" id="deactivateEventBtn" style="width:100%;margin-top:0.5rem;" hidden>Deactivate Now</button>
+  </section>
+
+  <section class="card admin-section-wide" id="adminModView">
+    <div class="card-head">
+      <h3>Players</h3>
+      <button class="btn secondary" id="addTestUserBtn">+ Add Demo Player</button>
+    </div>
+
+    <div class="admin-filters">
+      <input type="text" id="searchInput" placeholder="Search name or email…" class="admin-search" />
+      <div class="role-chips" id="roleChips">
+        <button class="chip active" data-role="all">All</button>
+        <button class="chip" data-role="user">User</button>
+        <button class="chip" data-role="moderator">Moderator</button>
+        <button class="chip" data-role="leader">Leader</button>
+        <button class="chip" data-role="admin">Admin</button>
+        <button class="chip" data-role="superadmin">Super Admin</button>
+      </div>
+    </div>
+
+    <div class="user-list" id="userList"></div>
+    <p class="empty-state" id="emptyState" hidden>No players match your search.</p>
+  </section>
+
+  <section class="card admin-section-wide" id="deletedUsersCard" hidden>
+    <div class="card-head"><h3>🗑️ Deleted Players</h3></div>
+    <p class="card-sub">Only Admins and Moderators can restore a deleted player.</p>
+    <div class="user-list" id="deletedUserList"></div>
+  </section>
+
+  <!-- Leader view: only their own team, plus pending join requests -->
+  <section class="card" id="leaderView" hidden>
+    <div class="card-head"><h3>🧑‍🤝‍🧑 Your Team</h3></div>
+    <p class="card-sub" id="leaderTeamNote"></p>
+    <div class="user-list" id="leaderTeamList"></div>
+    <p class="empty-state" id="leaderTeamEmpty" hidden>No team members yet.</p>
+
+    <h4 class="analytics-subhead">Pending join requests</h4>
+    <div class="user-list" id="leaderRequestsList"></div>
+    <p class="empty-state" id="leaderRequestsEmpty" hidden>No pending requests.</p>
+  </section>
+
+  <!-- User view: choose or apply to a leader's team -->
+  <section class="card" id="userView" hidden>
+    <div class="card-head"><h3>🌱 Join a Team</h3></div>
+    <p class="card-sub" id="userTeamNote"></p>
+    <div class="user-list" id="leaderOptionsList"></div>
+  </section>
+
+  <section class="test-tools">
+    <button class="btn secondary" id="resetAllBtn">Reset Demo Data</button>
+  </section>
+
+</div>
+
+<!-- Confirm modal for destructive actions -->
+<div class="modal" id="confirmModal" hidden>
+  <div class="modal-content">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p id="confirmBody" class="card-sub"></p>
+    <button class="btn" id="confirmYesBtn" style="width:100%;background:var(--danger);box-shadow:none;">Confirm</button>
+    <button class="btn secondary" id="confirmNoBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
+<!-- Add FP modal -->
+<div class="modal" id="addPointsModal" hidden>
+  <div class="modal-content">
+    <h2>Add Faith Points</h2>
+    <p class="card-sub" id="addPointsBody"></p>
+    <input type="number" id="addPointsInput" class="admin-search" value="50" min="1" step="1" />
+    <button class="btn" id="confirmAddPointsBtn" style="width:100%;margin-top:0.9rem;">Add FP</button>
+    <button class="btn secondary" id="cancelAddPointsBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
+<!-- View Player modal (read-only) -->
+<div class="modal" id="viewUserModal" hidden>
+  <div class="modal-content">
+    <h2>Player Details</h2>
+    <div id="viewUserBody" class="view-user-body"></div>
+    <button class="btn secondary" id="closeViewUserBtn" style="width:100%;margin-top:0.75rem;">Close</button>
+  </div>
+</div>
+
+<!-- Activate Event modal -->
+<div class="modal" id="activateEventModal" hidden>
+  <div class="modal-content">
+    <h2>🌟 Activate Growth Sprint Week</h2>
+    <p class="card-sub">Grants +25% growth from every Water, Prune, and Fertilize action, live in the game, for the duration you set below.</p>
+    <div class="duration-row">
+      <input type="number" id="eventDurationInput" class="admin-search" value="24" min="1" step="1" />
+      <select id="eventDurationUnit" class="admin-search">
+        <option value="hours">Hours</option>
+        <option value="days">Days</option>
+      </select>
+    </div>
+    <button class="btn" id="confirmActivateEventBtn" style="width:100%;margin-top:0.9rem;">Activate</button>
+    <button class="btn secondary" id="cancelActivateEventBtn" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
+<script type="module" src="firebase-integration.js?v=20260907-2"></script>
+
+<script src="admin.js?v=20260907-1"></script>
+</body>
+</html>
