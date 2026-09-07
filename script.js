@@ -1479,6 +1479,7 @@ let rankingMetric = 'fp'; // 'fp' | 'progress'
 let currentIndividualRankingRows = [];
 let currentTeamRankingRows = [];
 let pendingRankShare = null;
+const RANKING_EXCLUDED_ROLES = new Set(['moderator', 'admin', 'superadmin']);
 
 el('rankingIndividualBtn').addEventListener('click', () => {
   rankingView = 'individual';
@@ -1547,7 +1548,7 @@ function renderPodiumAndList(podiumEl, listEl, rows, valueLabelFn) {
 }
 
 function renderIndividualRanking() {
-  const rows = [{
+  const rows = RANKING_EXCLUDED_ROLES.has(state.role) ? [] : [{
     name: 'You',
     fp: Math.floor(state.totalFpEarned), // lifetime earned, not current spendable balance
     progress: Math.floor(state.treeProgress),
@@ -1563,13 +1564,18 @@ function renderIndividualRanking() {
     : (row => `🌱 ${row.progress}`);
 
   renderPodiumAndList(el('podiumContainer'), el('rankingList'), rows, valueLabelFn);
+  if (!rows.length) {
+    el('rankingList').innerHTML = '<p class="card-sub">Staff accounts are not included in individual rankings.</p>';
+  }
 }
 
 function renderTeamBattle() {
   const note = el('teamRankingNote');
   const rows = [];
 
-  if (state.team) {
+  if (RANKING_EXCLUDED_ROLES.has(state.role)) {
+    note.textContent = 'Staff accounts are not included in rankings.';
+  } else if (state.team) {
     rows.push({ name: state.team.name, avatar: getAvatarForName(state.team.name), fruit: 30 + state.fruitCount, isYours: true });
     note.textContent = 'Your team ranking, based on fruit collected this week.';
   } else {
