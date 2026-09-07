@@ -1590,6 +1590,8 @@ button {
   position: absolute;
   top: 0.6rem;
   right: 0.7rem;
+  left: auto;
+  z-index: 1;
   background: none;
   border: none;
   font-size: 1.4rem;

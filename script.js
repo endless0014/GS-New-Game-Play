@@ -1996,6 +1996,9 @@ function renderFaithFeeds() {
   el('faithFeedList').querySelectorAll('.feed-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const postId = btn.dataset.deleteKey.replace('user-', '');
+      const post = state.faithFeedPosts.find(item => item.id === postId);
+      const postPreview = post?.text ? `\n\n"${post.text.slice(0, 100)}${post.text.length > 100 ? '…' : ''}"` : '';
+      if (!window.confirm(`Delete this post? This cannot be undone.${postPreview}`)) return;
       state.faithFeedPosts = state.faithFeedPosts.filter(post => post.id !== postId);
       saveState();
       addLocalNotification('post_deleted', postId, 'Your post was deleted.');
