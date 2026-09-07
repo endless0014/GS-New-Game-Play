@@ -589,6 +589,7 @@ window.GrowingSeedFirebase = {
   adminDeleteUser,
   adminRestoreUser,
   setSharedEvent,
+  subscribeToSharedEvent,
   loadAllTeams,
   declineJoinRequest,
   sendTeamReminder
