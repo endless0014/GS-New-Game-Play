@@ -543,8 +543,8 @@ function renderAuthMode() {
     el(id).required = isRegistering;
   });
   el('googleSignInBtn').innerHTML = isRegistering
-    ? 'G <span>Register with Google</span>'
-    : 'G <span>Sign in with Google</span>';
+    ? '<img src="assets/google-g.svg" alt="" class="google-logo" /> <span>Register with Google</span>'
+    : '<img src="assets/google-g.svg" alt="" class="google-logo" /> <span>Sign in with Google</span>';
   el('authModeBtn').addEventListener('click', () => {
     authMode = isRegistering ? 'login' : 'register';
     el('authError').hidden = true;
@@ -659,7 +659,7 @@ el('googleSignInBtn').addEventListener('click', async () => {
       : getGoogleSignInErrorMessage(error);
     el('authError').hidden = false;
     button.disabled = false;
-    button.textContent = 'G  Sign in with Google';
+    button.innerHTML = '<img src="assets/google-g.svg" alt="" class="google-logo" /> <span>Sign in with Google</span>';
   }
 });
 

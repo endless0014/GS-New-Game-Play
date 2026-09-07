@@ -224,7 +224,11 @@ button {
   box-shadow: 0 8px 18px rgba(35, 65, 42, 0.1);
 }
 
-.google-login-btn:first-letter { color: #4285f4; }
+.google-logo {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+}
 
 .profile-logout-btn {
   width: 100%;
