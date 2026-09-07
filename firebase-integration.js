@@ -136,11 +136,24 @@ async function ensureUserDocument(user) {
 async function connectLiveSession() {
   const connected = await initFirebase();
   if (!connected) return null;
-  const { getRedirectResult } = initFirebase._authModule;
-  let redirectResult = null;
-  redirectResult = await getRedirectResult(_auth);
-  if (redirectResult?.user) return { user: redirectResult.user, isNew: false };
-  return _auth.currentUser ? { user: _auth.currentUser, isNew: false } : null;
+  const { getRedirectResult, onAuthStateChanged } = initFirebase._authModule;
+
+  const authState = new Promise(resolve => {
+    let settled = false;
+    const unsubscribe = onAuthStateChanged(_auth, user => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      resolve(user);
+    });
+  });
+
+  const redirectResult = await getRedirectResult(_auth);
+  const user = redirectResult?.user || await authState;
+  if (!user) return null;
+
+  const { isNew } = await ensureUserDocument(user);
+  return { user, isNew };
 }
 
 /* ============================================================
