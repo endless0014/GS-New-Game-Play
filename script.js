@@ -282,8 +282,9 @@ const SFX = {
 
 /* ---------------- State ---------------- */
 const el = (id) => document.getElementById(id);
-['loginEmail', 'loginPassword'].forEach(id => {
+['loginEmail', 'loginPassword', 'loginFirstName', 'loginLastName'].forEach(id => {
   const field = el(id);
+  if (!field) return;
   field.value = '';
   field.addEventListener('focus', () => {
     field.value = '';
@@ -315,6 +316,8 @@ function defaultState() {
     // --- New: personalization, sound, badges, tracking ---
     treeName: '',
     treeNameLocked: false,   // locks after first set; unlocks again only on tree reset
+    firstName: '',
+    lastName: '',
     profileName: '',
     profileNameEditsUsed: 0, // 0 = never set; after first set, exactly 1 more edit allowed, then locked
     profileEmail: '',
@@ -497,6 +500,13 @@ function renderAuthMode() {
     : 'Don\'t have an account? <button type="button" id="authModeBtn">Create one</button>';
   el('forgotPasswordBtn').hidden = isRegistering;
   el('loginPassword').autocomplete = isRegistering ? 'new-password' : 'current-password';
+  el('registrationNameFields').hidden = !isRegistering;
+  ['loginFirstName', 'loginLastName'].forEach(id => {
+    el(id).required = isRegistering;
+  });
+  el('googleSignInBtn').innerHTML = isRegistering
+    ? 'G <span>Register with Google</span>'
+    : 'G <span>Sign in with Google</span>';
   el('authModeBtn').addEventListener('click', () => {
     authMode = isRegistering ? 'login' : 'register';
     el('authError').hidden = true;
@@ -504,10 +514,13 @@ function renderAuthMode() {
   });
 }
 
-async function finishEmailAuth(session, button) {
+async function finishEmailAuth(session, button, profileNames = {}) {
   firebaseUserId = session.user.uid;
   try {
     if (session.isNew) {
+      state.firstName = profileNames.firstName || '';
+      state.lastName = profileNames.lastName || '';
+      state.profileName = [state.firstName, state.lastName].filter(Boolean).join(' ');
       await window.GrowingSeedFirebase.savePlayerState(firebaseUserId, state);
     } else {
       const remoteState = await window.GrowingSeedFirebase.loadPlayerState(firebaseUserId);
@@ -538,13 +551,20 @@ el('loginForm').addEventListener('submit', async event => {
     await bridge.ready;
     const email = el('loginEmail').value.trim();
     const password = el('loginPassword').value;
+    const firstName = el('loginFirstName').value.trim();
+    const lastName = el('loginLastName').value.trim();
+    if (authMode === 'register' && (!firstName || !lastName)) {
+      throw new Error('Enter both your first and last name to create an account.');
+    }
     const session = authMode === 'register'
-      ? await bridge.registerWithEmail(email, password)
+      ? await bridge.registerWithEmail(email, password, firstName, lastName)
       : await bridge.signInWithEmail(email, password);
-    await finishEmailAuth(session, button);
+    await finishEmailAuth(session, button, { firstName, lastName });
   } catch (error) {
     console.error(authMode === 'register' ? 'Email registration failed.' : 'Email sign-in failed.', error);
-    el('authError').textContent = getAuthErrorMessage(error);
+    el('authError').textContent = error.message === 'Enter both your first and last name to create an account.'
+      ? error.message
+      : getAuthErrorMessage(error);
     el('authError').hidden = false;
     button.disabled = false;
     button.textContent = authMode === 'register' ? 'Create account' : 'Login';
@@ -577,10 +597,18 @@ el('googleSignInBtn').addEventListener('click', async () => {
   button.textContent = 'Connecting...';
   try {
     await bridge.ready;
-    await finishEmailAuth(await bridge.signInWithGoogle(), button);
+    const firstName = el('loginFirstName').value.trim();
+    const lastName = el('loginLastName').value.trim();
+    if (authMode === 'register' && (!firstName || !lastName)) {
+      throw new Error('Enter both your first and last name before registering with Google.');
+    }
+    const session = await bridge.signInWithGoogle(firstName, lastName);
+    await finishEmailAuth(session, button, { firstName, lastName });
   } catch (error) {
     console.error('Google sign-in failed.', error);
-    el('authError').textContent = getGoogleSignInErrorMessage(error);
+    el('authError').textContent = error.message === 'Enter both your first and last name before registering with Google.'
+      ? error.message
+      : getGoogleSignInErrorMessage(error);
     el('authError').hidden = false;
     button.disabled = false;
     button.textContent = 'G  Sign in with Google';

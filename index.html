@@ -22,6 +22,16 @@
     <form class="login-form" id="loginForm" autocomplete="off">
       <label for="loginEmail">Email</label>
       <input id="loginEmail" name="gs_account_email" type="email" autocomplete="off" readonly required />
+      <div class="registration-name-fields" id="registrationNameFields" hidden>
+        <div>
+          <label for="loginFirstName">First name</label>
+          <input id="loginFirstName" name="gs_account_first_name" type="text" autocomplete="given-name" maxlength="40" readonly />
+        </div>
+        <div>
+          <label for="loginLastName">Last name</label>
+          <input id="loginLastName" name="gs_account_last_name" type="text" autocomplete="family-name" maxlength="40" readonly />
+        </div>
+      </div>
       <label for="loginPassword">Password</label>
       <input id="loginPassword" name="gs_account_password" type="password" autocomplete="new-password" readonly minlength="6" required />
       <button class="btn" type="submit" id="emailLoginBtn" style="width:100%;">Login</button>

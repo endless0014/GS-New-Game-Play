@@ -121,12 +121,14 @@ async function initFirebase() {
   return true;
 }
 
-async function ensureUserDocument(user) {
+async function ensureUserDocument(user, profileNames = {}) {
   try {
     const existing = await loadPlayerState(user.uid);
     if (!existing) {
       await createUserDocument(user.uid, {
-        name: user.displayName || '',
+        firstName: profileNames.firstName || '',
+        lastName: profileNames.lastName || '',
+        name: [profileNames.firstName, profileNames.lastName].filter(Boolean).join(' ') || user.displayName || '',
         email: user.email || '',
         authType: 'google',
         role: isLockedSuperAdminEmail(user.email) ? 'superadmin' : 'user',
@@ -164,10 +166,10 @@ async function connectLiveSession() {
    AUTH
    ============================================================ */
 
-async function signInWithGoogle() {
+async function signInWithGoogle(firstName = '', lastName = '') {
   const { GoogleAuthProvider, signInWithPopup } = initFirebase._authModule;
   const credential = await signInWithPopup(_auth, new GoogleAuthProvider());
-  return ensureUserDocument(credential.user);
+  return ensureUserDocument(credential.user, { firstName, lastName });
 }
 
 async function signInWithEmail(email, password) {
@@ -176,10 +178,10 @@ async function signInWithEmail(email, password) {
   return { user: credential.user, isNew: false };
 }
 
-async function registerWithEmail(email, password) {
+async function registerWithEmail(email, password, firstName, lastName) {
   const { createUserWithEmailAndPassword } = initFirebase._authModule;
   const credential = await createUserWithEmailAndPassword(_auth, email, password);
-  return ensureUserDocument(credential.user);
+  return ensureUserDocument(credential.user, { firstName, lastName });
 }
 
 async function sendPasswordReset(email) {

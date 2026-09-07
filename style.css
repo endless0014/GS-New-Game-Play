@@ -185,6 +185,17 @@ button {
   border-color: var(--accent);
 }
 
+.registration-name-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.registration-name-fields > div {
+  display: grid;
+  gap: 0.45rem;
+}
+
 .login-divider {
   display: flex;
   align-items: center;

@@ -97,6 +97,10 @@ service cloud.firestore {
 
       // Creating your own user doc happens once, at registration.
       allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.firstName is string
+        && request.resource.data.firstName.size() > 0
+        && request.resource.data.lastName is string
+        && request.resource.data.lastName.size() > 0
         && ((isLockedSuperAdminEmail(request.auth.token.email)
           && request.resource.data.role == 'superadmin'
           && request.resource.data.roleLocked == true)
