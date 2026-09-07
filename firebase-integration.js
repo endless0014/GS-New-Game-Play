@@ -136,20 +136,14 @@ async function ensureUserDocument(user) {
 async function connectLiveSession() {
   const connected = await initFirebase();
   if (!connected) return null;
-  const { getRedirectResult, onAuthStateChanged } = initFirebase._authModule;
+  const { onAuthStateChanged } = initFirebase._authModule;
 
-  const authState = new Promise(resolve => {
-    let settled = false;
+  const user = await new Promise(resolve => {
     const unsubscribe = onAuthStateChanged(_auth, user => {
-      if (settled) return;
-      settled = true;
       unsubscribe();
       resolve(user);
     });
   });
-
-  const redirectResult = await getRedirectResult(_auth);
-  const user = redirectResult?.user || await authState;
   if (!user) return null;
 
   const { isNew } = await ensureUserDocument(user);
@@ -161,8 +155,9 @@ async function connectLiveSession() {
    ============================================================ */
 
 async function signInWithGoogle() {
-  const { GoogleAuthProvider, signInWithRedirect } = initFirebase._authModule;
-  await signInWithRedirect(_auth, new GoogleAuthProvider());
+  const { GoogleAuthProvider, signInWithPopup } = initFirebase._authModule;
+  const credential = await signInWithPopup(_auth, new GoogleAuthProvider());
+  return ensureUserDocument(credential.user);
 }
 
 async function signInWithEmail(email, password) {

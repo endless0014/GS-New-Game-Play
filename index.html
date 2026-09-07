@@ -18,17 +18,17 @@
     </div>
     <p class="login-kicker">Growing Seed</p>
     <h1 id="loginTitle">Welcome back</h1>
-    <p class="login-copy">Grow your faith journey</p>
+    <p class="login-copy" id="loginCopy">Grow your faith journey</p>
     <form class="login-form" id="loginForm" autocomplete="off">
       <label for="loginEmail">Email</label>
-      <input id="loginEmail" type="email" autocomplete="off" required />
+      <input id="loginEmail" type="email" autocomplete="email" required />
       <label for="loginPassword">Password</label>
-      <input id="loginPassword" type="password" autocomplete="new-password" required />
+      <input id="loginPassword" type="password" autocomplete="current-password" minlength="6" required />
       <button class="btn" type="submit" id="emailLoginBtn" style="width:100%;">Login</button>
     </form>
     <div class="login-divider"><span>or</span></div>
     <button class="btn google-login-btn" type="button" id="googleSignInBtn" style="width:100%;">G <span>Sign in with Google</span></button>
-    <p class="login-links">Don't have an account? <button type="button" id="registerBtn">Register here</button></p>
+    <p class="login-links" id="authModePrompt">Don't have an account? <button type="button" id="authModeBtn">Create one</button></p>
     <button class="forgot-password-btn" type="button" id="forgotPasswordBtn">Forgot password?</button>
     <p class="card-sub auth-error" id="authError" hidden></p>
   </section>
@@ -789,7 +789,7 @@
 
 <canvas id="celebrationCanvas"></canvas>
 
-<script type="module" src="firebase-integration.js"></script>
+<script type="module" src="firebase-integration.js?v=20260907-1"></script>
 
 <script src="script.js?v=20260906-11"></script>
 </body>

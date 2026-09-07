@@ -291,6 +291,7 @@ let state = loadState();
 let firebaseUserId = null;
 let firebaseSyncReady = false;
 let unsubscribePlayerSync = null;
+let authMode = 'login';
 
 function defaultState() {
   return {
@@ -461,6 +462,7 @@ function getGoogleSignInErrorMessage(error) {
     'auth/operation-not-allowed': 'Google sign-in is not enabled. Enable Google under Firebase Authentication > Sign-in method.',
     'auth/popup-blocked': 'Your browser blocked the Google sign-in popup. Allow popups for this site and try again.',
     'auth/popup-closed-by-user': 'Sign-in was cancelled.',
+    'auth/account-exists-with-different-credential': 'This email already uses email and password. Log in with your password instead.',
     'auth/network-request-failed': 'Firebase could not reach the network. Check your connection and try again.',
     'auth/invalid-api-key': 'The Firebase API key is invalid. Check FIREBASE_CONFIG in firebase-integration.js.'
   };
@@ -475,9 +477,27 @@ function getAuthErrorMessage(error) {
     'auth/weak-password': 'Choose a password with at least 6 characters.',
     'auth/user-not-found': 'No account was found for that email.',
     'auth/operation-not-allowed': 'Email and password sign-in is not enabled in Firebase.',
-    'auth/network-request-failed': 'Firebase could not reach the network. Check your connection and try again.'
+    'auth/network-request-failed': 'Firebase could not reach the network. Check your connection and try again.',
+    'auth/too-many-requests': 'Too many attempts. Wait a moment and try again.'
   };
   return messages[error?.code] || `Authentication failed (${error?.code || 'unknown error'}). Please try again.`;
+}
+
+function renderAuthMode() {
+  const isRegistering = authMode === 'register';
+  el('loginTitle').textContent = isRegistering ? 'Create your account' : 'Welcome back';
+  el('loginCopy').textContent = isRegistering ? 'Start your faith journey' : 'Grow your faith journey';
+  el('emailLoginBtn').textContent = isRegistering ? 'Create account' : 'Login';
+  el('authModePrompt').innerHTML = isRegistering
+    ? 'Already have an account? <button type="button" id="authModeBtn">Log in</button>'
+    : 'Don\'t have an account? <button type="button" id="authModeBtn">Create one</button>';
+  el('forgotPasswordBtn').hidden = isRegistering;
+  el('loginPassword').autocomplete = isRegistering ? 'new-password' : 'current-password';
+  el('authModeBtn').addEventListener('click', () => {
+    authMode = isRegistering ? 'login' : 'register';
+    el('authError').hidden = true;
+    renderAuthMode();
+  });
 }
 
 async function finishEmailAuth(session, button) {
@@ -508,41 +528,22 @@ el('loginForm').addEventListener('submit', async event => {
   const bridge = window.GrowingSeedFirebase;
   const button = el('emailLoginBtn');
   button.disabled = true;
-  button.textContent = 'Logging in...';
+  button.textContent = authMode === 'register' ? 'Creating account...' : 'Logging in...';
   el('authError').hidden = true;
   try {
     await bridge.ready;
-    const session = await bridge.signInWithEmail(el('loginEmail').value.trim(), el('loginPassword').value);
+    const email = el('loginEmail').value.trim();
+    const password = el('loginPassword').value;
+    const session = authMode === 'register'
+      ? await bridge.registerWithEmail(email, password)
+      : await bridge.signInWithEmail(email, password);
     await finishEmailAuth(session, button);
   } catch (error) {
-    console.error('Email sign-in failed.', error);
+    console.error(authMode === 'register' ? 'Email registration failed.' : 'Email sign-in failed.', error);
     el('authError').textContent = getAuthErrorMessage(error);
     el('authError').hidden = false;
     button.disabled = false;
-    button.textContent = 'Login';
-  }
-});
-
-el('registerBtn').addEventListener('click', async () => {
-  const bridge = window.GrowingSeedFirebase;
-  const email = el('loginEmail').value.trim();
-  const password = el('loginPassword').value;
-  const button = el('registerBtn');
-  if (!email || !password) {
-    el('authError').textContent = 'Enter an email and password before registering.';
-    el('authError').hidden = false;
-    return;
-  }
-  button.disabled = true;
-  el('authError').hidden = true;
-  try {
-    await bridge.ready;
-    await finishEmailAuth(await bridge.registerWithEmail(email, password), button);
-  } catch (error) {
-    console.error('Email registration failed.', error);
-    el('authError').textContent = getAuthErrorMessage(error);
-    el('authError').hidden = false;
-    button.disabled = false;
+    button.textContent = authMode === 'register' ? 'Create account' : 'Login';
   }
 });
 
@@ -569,16 +570,16 @@ el('googleSignInBtn').addEventListener('click', async () => {
   if (!bridge) return;
   const button = el('googleSignInBtn');
   button.disabled = true;
-  button.textContent = 'Connecting…';
+  button.textContent = 'Connecting...';
   try {
     await bridge.ready;
-    await bridge.signInWithGoogle();
+    await finishEmailAuth(await bridge.signInWithGoogle(), button);
   } catch (error) {
     console.error('Google sign-in failed.', error);
     el('authError').textContent = getGoogleSignInErrorMessage(error);
     el('authError').hidden = false;
     button.disabled = false;
-    button.textContent = 'Continue with Google';
+    button.textContent = 'G  Sign in with Google';
   }
 });
 
@@ -2691,6 +2692,7 @@ function celebrateFirstFruit() {
 }
 
 /* ---------------- Init ---------------- */
+renderAuthMode();
 function scheduleInitialModal() {
   if (!el('authGate').hidden) return;
 
