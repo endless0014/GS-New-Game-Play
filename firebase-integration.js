@@ -231,6 +231,32 @@ async function loadPlayerState(uid) {
   return snap.exists() ? snap.data() : null;
 }
 
+async function loadAllUsers() {
+  const { collection, getDocs } = initFirebase._firestoreModule;
+  const snapshot = await getDocs(collection(_db, 'users'));
+  return snapshot.docs.map(snap => ({ id: snap.id, ...snap.data() }));
+}
+
+async function loadDeletedUsers() {
+  const { collection, getDocs } = initFirebase._firestoreModule;
+  const snapshot = await getDocs(collection(_db, 'deletedUsers'));
+  return snapshot.docs.map(snap => ({ id: snap.id, ...snap.data() }));
+}
+
+async function loadReports() {
+  const { collection, getDocs, orderBy, query } = initFirebase._firestoreModule;
+  const snapshot = await getDocs(query(collection(_db, 'reports'), orderBy('createdAt', 'desc')));
+  return snapshot.docs.map(snap => ({ id: snap.id, ...snap.data() }));
+}
+
+async function updateReportStatus(reportId, status) {
+  const { doc, updateDoc } = initFirebase._firestoreModule;
+  if (!['open', 'reviewed', 'resolved', 'dismissed'].includes(status)) {
+    throw new Error('Invalid report status.');
+  }
+  await updateDoc(doc(_db, 'reports', reportId), { status });
+}
+
 async function savePlayerState(uid, partialState) {
   const { doc, setDoc } = initFirebase._firestoreModule;
   // merge: true means this behaves like Object.assign, not a full
@@ -479,6 +505,12 @@ function subscribeToSharedEvent(callback) {
   });
 }
 
+async function loadAllTeams() {
+  const { collection, getDocs } = initFirebase._firestoreModule;
+  const snapshot = await getDocs(collection(_db, 'teams'));
+  return snapshot.docs.map(snap => ({ id: snap.id, ...snap.data() }));
+}
+
 /* ============================================================
    TEAMS
    ============================================================ */
@@ -508,6 +540,26 @@ async function approveJoinRequest(teamId, request) {
   });
 }
 
+async function declineJoinRequest(teamId, request) {
+  const { arrayRemove, doc, updateDoc } = initFirebase._firestoreModule;
+  await updateDoc(doc(_db, 'teams', teamId), {
+    requests: arrayRemove(request)
+  });
+}
+
+async function sendTeamReminder(teamId, recipientUid, message) {
+  const { addDoc, collection, serverTimestamp } = initFirebase._firestoreModule;
+  await addDoc(collection(_db, 'notifications'), {
+    teamId,
+    actorUid: _auth.currentUser.uid,
+    recipientUid,
+    type: 'team_reminder',
+    message: String(message || '').slice(0, 240),
+    read: false,
+    createdAt: serverTimestamp()
+  });
+}
+
 async function kickMember(teamId, uid) {
   const { doc, updateDoc, arrayRemove } = initFirebase._firestoreModule;
   await updateDoc(doc(_db, 'teams', teamId), { memberUids: arrayRemove(uid) });
@@ -523,6 +575,10 @@ window.GrowingSeedFirebase = {
   registerWithEmail,
   sendPasswordReset,
   loadPlayerState,
+  loadAllUsers,
+  loadDeletedUsers,
+  loadReports,
+  updateReportStatus,
   savePlayerState,
   subscribeToPlayerState,
   getCurrentUserRole,
@@ -532,6 +588,9 @@ window.GrowingSeedFirebase = {
   adminAddPoints,
   adminDeleteUser,
   adminRestoreUser,
-  setSharedEvent
+  setSharedEvent,
+  loadAllTeams,
+  declineJoinRequest,
+  sendTeamReminder
 };
 window.dispatchEvent(new Event('growing-seed-firebase-ready'));

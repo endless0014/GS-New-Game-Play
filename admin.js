@@ -1,7 +1,6 @@
 /* ============================================================
   Admin Dashboard
-  Dashboard actions still use the restored local demo data, while
-  Firebase controls who can open the dashboard and which role is active.
+  Firebase controls dashboard access and persists the management actions.
   ============================================================ */
 
 const STORAGE_KEY = 'growingSeedAdminSandbox_v1';
@@ -21,6 +20,10 @@ const FIRST_NAMES = ['Maria', 'James', 'Grace', 'Daniel', 'Sofia', 'Noah', 'Ruth
 const LAST_NAMES  = ['Santos', 'Reyes', 'Cruz', 'Bautista', 'Garcia', 'Mendoza', 'Torres', 'Ramos'];
 
 let state = loadState();
+let firebaseBridge = null;
+let liveDashboard = false;
+let liveTeams = [];
+let liveSharedEvent = null;
 
 function randomFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -148,6 +151,67 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function stageLabel(value) {
+  const normalized = String(value || '').toLowerCase();
+  return STAGE_LABELS.find(stage => stage.toLowerCase() === normalized) || 'Seed';
+}
+
+function dashboardUserFromRecord(record) {
+  const name = record.name || record.profileName || [record.firstName, record.lastName].filter(Boolean).join(' ') || record.email || record.profileEmail || 'Unnamed player';
+  return {
+    id: record.id,
+    name,
+    email: record.email || record.profileEmail || '',
+    role: ROLE_TIERS.includes(record.role) ? record.role : 'user',
+    fp: Number(record.faithPoints) || 0,
+    streak: Number(record.streak) || 1,
+    stage: stageLabel(record.stage || record.previousStage),
+    fruit: Number(record.fruitCount) || 0,
+    teamLeaderId: record.teamLeaderId || null,
+    pendingRequestLeaderId: record.pendingRequestLeaderId || null,
+    roleLocked: record.roleLocked === true
+  };
+}
+
+async function loadLiveDashboardData() {
+  const [users, deletedUsers, teams, reports] = await Promise.all([
+    firebaseBridge.loadAllUsers(),
+    firebaseBridge.loadDeletedUsers(),
+    firebaseBridge.loadAllTeams(),
+    firebaseBridge.loadReports()
+  ]);
+  state.users = users.map(dashboardUserFromRecord);
+  state.deletedUsers = deletedUsers.map(dashboardUserFromRecord);
+  state.reports = reports;
+  liveTeams = teams;
+  liveTeams.forEach(team => {
+    const leaderUid = team.leaderUid;
+    (team.memberUids || []).forEach(uid => {
+      const member = state.users.find(user => user.id === uid);
+      if (member) member.teamLeaderId = leaderUid;
+    });
+    (team.requests || []).forEach(request => {
+      const member = state.users.find(user => user.id === request.uid);
+      if (member) member.pendingRequestLeaderId = leaderUid;
+    });
+  });
+}
+
+async function refreshLiveDashboard() {
+  if (!liveDashboard) return;
+  await loadLiveDashboardData();
+  renderAll();
+}
+
+function showLiveActionError(error) {
+  console.error('Admin dashboard action failed.', error);
+  showToast(error?.message || 'The action could not be completed.', 'warning');
+}
+
+function teamForLeader(leaderId) {
+  return liveTeams.find(team => team.leaderUid === leaderId) || null;
+}
+
 const el = (id) => document.getElementById(id);
 let activeRoleFilter = 'all';
 
@@ -156,6 +220,7 @@ function renderAll() {
   renderCharts();
   applyViewerRoleVisibility();
   renderEventControl();
+  renderReports();
   if (state.viewerRole === 'admin' || state.viewerRole === 'moderator' || state.viewerRole === 'superadmin') {
     renderUsers();
     renderDeletedUsers();
@@ -163,6 +228,48 @@ function renderAll() {
     renderLeaderView();
   }
   saveState();
+}
+
+function renderReports() {
+  const canReview = ['moderator', 'admin', 'superadmin'].includes(state.viewerRole);
+  const reportsCard = el('reportsCard');
+  reportsCard.hidden = !canReview;
+  if (!canReview) return;
+
+  const reports = state.reports || [];
+  el('reportsEmpty').hidden = reports.length > 0;
+  el('reportList').innerHTML = reports.map(report => `
+    <div class="user-card">
+      <div class="user-card-top">
+        <div>
+          <div class="user-name">${escapeHtml(report.targetType || 'Content')} report</div>
+          <div class="user-email">Reported by ${escapeHtml(report.reporterUid || 'Unknown player')}</div>
+        </div>
+        <span class="role-badge ${report.status === 'open' ? 'moderator' : 'user'}">${escapeHtml(report.status || 'open')}</span>
+      </div>
+      <p class="card-sub">${escapeHtml(report.reason || 'No reason provided')}</p>
+      <p class="card-sub">Target: ${escapeHtml(report.targetId || 'Unknown')}</p>
+      <div class="user-actions">
+        <button data-report-status="reviewed" data-report-id="${escapeHtml(report.id)}">Mark reviewed</button>
+        <button data-report-status="resolved" data-report-id="${escapeHtml(report.id)}">Resolve</button>
+        <button class="danger-action" data-report-status="dismissed" data-report-id="${escapeHtml(report.id)}">Dismiss</button>
+      </div>
+    </div>
+  `).join('');
+  el('reportList').querySelectorAll('[data-report-status]').forEach(button => {
+    button.addEventListener('click', async () => {
+      try {
+        if (liveDashboard) await firebaseBridge.updateReportStatus(button.dataset.reportId, button.dataset.reportStatus);
+        const report = reports.find(item => item.id === button.dataset.reportId);
+        if (report) report.status = button.dataset.reportStatus;
+        showToast(`Report marked ${button.dataset.reportStatus}.`, 'success');
+        if (liveDashboard) await refreshLiveDashboard();
+        else renderAll();
+      } catch (error) {
+        showLiveActionError(error);
+      }
+    });
+  });
 }
 
 function applyViewerRoleVisibility() {
@@ -229,14 +336,14 @@ function renderUsers() {
     if (perms.resetPassword) el(`resetpw-${u.id}`).addEventListener('click', () => resetPassword(u.id));
     if (perms.delete && !u.roleLocked) el(`delete-${u.id}`).addEventListener('click', () => confirmAction(
       'Delete this player?',
-      `${u.name} will be moved to Deleted Players, where an Admin or Moderator can restore them. This only affects local demo data.`,
+      `${u.name} will be moved to Deleted Players, where an Admin or Moderator can restore them.`,
       () => deleteUser(u.id)
     ));
     if (perms.resetProgress) {
       const resetBtn = el(`reset-${u.id}`);
       if (resetBtn) resetBtn.addEventListener('click', () => confirmAction(
         'Reset this player?',
-        `This sets ${u.name}'s FP, streak, stage, and fruit back to zero. This only affects local demo data.`,
+        `This sets ${u.name}'s FP, streak, stage, and fruit back to zero.`,
         () => resetUser(u.id)
       ));
     }
@@ -320,12 +427,20 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
-function addPoints(id, amount) {
+async function addPoints(id, amount) {
   const u = state.users.find(x => x.id === id);
   if (!u) return;
-  u.fp += amount;
-  showToast(`+${amount} FP added to ${u.name}.`, 'success');
-  renderAll();
+  try {
+    if (liveDashboard) {
+      await firebaseBridge.adminAddPoints(id, amount);
+    }
+    u.fp += amount;
+    showToast(`+${amount} FP added to ${u.name}.`, 'success');
+    if (liveDashboard) await refreshLiveDashboard();
+    else renderAll();
+  } catch (error) {
+    showLiveActionError(error);
+  }
 }
 
 let pendingAddPointsId = null;
@@ -355,7 +470,7 @@ el('confirmAddPointsBtn').addEventListener('click', () => {
   pendingAddPointsId = null;
 });
 
-function updateRole(id, newRole) {
+async function updateRole(id, newRole) {
   // Guard here too, not just via the disabled attribute — mirrors the
   // real app needing a server-side check, not just a hidden UI control.
   const perms = PERMISSIONS[state.viewerRole] || PERMISSIONS.moderator;
@@ -371,12 +486,19 @@ function updateRole(id, newRole) {
     renderUsers();
     return;
   }
-  u.role = newRole;
-  showToast(`${u.name} is now ${ROLE_LABELS[newRole]}.`, 'info');
-  renderAll();
+  try {
+    if (liveDashboard) await firebaseBridge.adminUpdateUserRole(id, newRole);
+    u.role = newRole;
+    showToast(`${u.name} is now ${ROLE_LABELS[newRole]}.`, 'info');
+    if (liveDashboard) await refreshLiveDashboard();
+    else renderAll();
+  } catch (error) {
+    showLiveActionError(error);
+    renderUsers();
+  }
 }
 
-function resetUser(id) {
+async function resetUser(id) {
   const perms = PERMISSIONS[state.viewerRole] || PERMISSIONS.moderator;
   if (!perms.resetProgress) {
     showToast('Only Admins can reset progress.', 'warning');
@@ -384,12 +506,18 @@ function resetUser(id) {
   }
   const u = state.users.find(x => x.id === id);
   if (!u) return;
-  u.fp = 0;
-  u.streak = 1;
-  u.fruit = 0;
-  u.stage = STAGE_LABELS[0];
-  showToast(`${u.name}'s progress was reset.`, 'info');
-  renderAll();
+  try {
+    if (liveDashboard) await firebaseBridge.adminResetUserProgress(id);
+    u.fp = 0;
+    u.streak = 1;
+    u.fruit = 0;
+    u.stage = STAGE_LABELS[0];
+    showToast(`${u.name}'s progress was reset.`, 'info');
+    if (liveDashboard) await refreshLiveDashboard();
+    else renderAll();
+  } catch (error) {
+    showLiveActionError(error);
+  }
 }
 
 // Mirrors the same 8 badge categories from the real game (script.js's
@@ -475,35 +603,63 @@ function teamLeaderName(leaderId) {
 function openUIAs(id) {
   const u = state.users.find(x => x.id === id);
   if (!u) return;
-  showToast(`Opening the app as ${u.name}… (sample only, no real session switch)`, 'info');
+  const previewUrl = new URL('index.html', window.location.href);
+  previewUrl.searchParams.set('previewUid', u.id);
+  const previewWindow = window.open(previewUrl.href, '_blank', 'noopener');
+  if (!previewWindow) {
+    showToast('Allow popups to open the player preview.', 'warning');
+    return;
+  }
+  showToast(`Opened a read-only preview for ${u.name}.`, 'info');
 }
 
-function resetPassword(id) {
+async function resetPassword(id) {
   const u = state.users.find(x => x.id === id);
   if (!u) return;
-  showToast(`Password reset email sent to ${u.email} (sample only).`, 'success');
+  try {
+    if (liveDashboard) {
+      await firebaseBridge.sendPasswordReset(u.email);
+    }
+    showToast(`Password reset email sent to ${u.email}.`, 'success');
+  } catch (error) {
+    showLiveActionError(error);
+  }
 }
 
-function deleteUser(id) {
+async function deleteUser(id) {
   const idx = state.users.findIndex(x => x.id === id);
   if (idx === -1) return;
   if (state.users[idx].roleLocked) {
     showToast('Super Admin accounts cannot be deleted.', 'warning');
     return;
   }
-  const [removed] = state.users.splice(idx, 1);
-  state.deletedUsers.push(removed);
-  showToast(`${removed.name} was deleted.`, 'info');
-  renderAll();
+  const removed = state.users[idx];
+  try {
+    if (liveDashboard) await firebaseBridge.adminDeleteUser(id);
+    state.users.splice(idx, 1);
+    state.deletedUsers.push(removed);
+    showToast(`${removed.name} was deleted.`, 'info');
+    if (liveDashboard) await refreshLiveDashboard();
+    else renderAll();
+  } catch (error) {
+    showLiveActionError(error);
+  }
 }
 
-function restoreUser(id) {
+async function restoreUser(id) {
   const idx = state.deletedUsers.findIndex(x => x.id === id);
   if (idx === -1) return;
-  const [restored] = state.deletedUsers.splice(idx, 1);
-  state.users.push(restored);
-  showToast(`${restored.name} was restored.`, 'success');
-  renderAll();
+  const restored = state.deletedUsers[idx];
+  try {
+    if (liveDashboard) await firebaseBridge.adminRestoreUser(id);
+    state.deletedUsers.splice(idx, 1);
+    state.users.push(restored);
+    showToast(`${restored.name} was restored.`, 'success');
+    if (liveDashboard) await refreshLiveDashboard();
+    else renderAll();
+  } catch (error) {
+    showLiveActionError(error);
+  }
 }
 
 function renderDeletedUsers() {
@@ -632,8 +788,17 @@ function renderLeaderView() {
     </div>
   `).join('');
   team.forEach(u => {
-    el(`remind-${u.id}`).addEventListener('click', () => {
-      showToast(`Reminder sent to ${u.name} (sample only — no real notification).`, 'success');
+    el(`remind-${u.id}`).addEventListener('click', async () => {
+      try {
+        if (liveDashboard) {
+          const teamRecord = teamForLeader(leaderId);
+          if (!teamRecord) throw new Error('This leader does not have a team record.');
+          await firebaseBridge.sendTeamReminder(teamRecord.id, u.id, `Your team leader sent you a reminder.`);
+        }
+        showToast(`Reminder sent to ${u.name}.`, 'success');
+      } catch (error) {
+        showLiveActionError(error);
+      }
     });
   });
 
@@ -655,16 +820,40 @@ function renderLeaderView() {
     </div>
   `).join('');
   pending.forEach(u => {
-    el(`approve-${u.id}`).addEventListener('click', () => {
-      u.teamLeaderId = leaderId;
-      u.pendingRequestLeaderId = null;
-      showToast(`${u.name} joined the team.`, 'success');
-      renderAll();
+    el(`approve-${u.id}`).addEventListener('click', async () => {
+      try {
+        const teamRecord = teamForLeader(leaderId);
+        const request = teamRecord?.requests?.find(item => item.uid === u.id) || { uid: u.id, name: u.name };
+        if (liveDashboard) {
+          if (!teamRecord) throw new Error('This leader does not have a team record.');
+          await firebaseBridge.approveJoinRequest(teamRecord.id, request);
+          await refreshLiveDashboard();
+        } else {
+          u.teamLeaderId = leaderId;
+          u.pendingRequestLeaderId = null;
+          renderAll();
+        }
+        showToast(`${u.name} joined the team.`, 'success');
+      } catch (error) {
+        showLiveActionError(error);
+      }
     });
-    el(`decline-${u.id}`).addEventListener('click', () => {
-      u.pendingRequestLeaderId = null;
-      showToast(`Declined ${u.name}'s request.`, 'info');
-      renderAll();
+    el(`decline-${u.id}`).addEventListener('click', async () => {
+      try {
+        const teamRecord = teamForLeader(leaderId);
+        const request = teamRecord?.requests?.find(item => item.uid === u.id) || { uid: u.id, name: u.name };
+        if (liveDashboard) {
+          if (!teamRecord) throw new Error('This leader does not have a team record.');
+          await firebaseBridge.declineJoinRequest(teamRecord.id, request);
+          await refreshLiveDashboard();
+        } else {
+          u.pendingRequestLeaderId = null;
+          renderAll();
+        }
+        showToast(`Declined ${u.name}'s request.`, 'info');
+      } catch (error) {
+        showLiveActionError(error);
+      }
     });
   });
 }
@@ -925,6 +1114,7 @@ function showToast(message, type = 'info') {
 const SHARED_EVENT_KEY = 'growingSeedSharedEventState_v1';
 
 function getSharedEvent() {
+  if (liveDashboard) return liveSharedEvent;
   try {
     const raw = localStorage.getItem(SHARED_EVENT_KEY);
     return raw ? JSON.parse(raw) : null;
@@ -933,7 +1123,12 @@ function getSharedEvent() {
   }
 }
 
-function setSharedEvent(eventData) {
+async function setSharedEvent(eventData) {
+  if (liveDashboard) {
+    await firebaseBridge.setSharedEvent(eventData);
+    liveSharedEvent = eventData;
+    return;
+  }
   localStorage.setItem(SHARED_EVENT_KEY, JSON.stringify(eventData));
 }
 
@@ -972,7 +1167,7 @@ el('activateEventBtn').addEventListener('click', () => {
 });
 el('cancelActivateEventBtn').addEventListener('click', () => { el('activateEventModal').hidden = true; });
 
-el('confirmActivateEventBtn').addEventListener('click', () => {
+el('confirmActivateEventBtn').addEventListener('click', async () => {
   const amount = Number(el('eventDurationInput').value);
   const unit = el('eventDurationUnit').value;
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -980,24 +1175,32 @@ el('confirmActivateEventBtn').addEventListener('click', () => {
     return;
   }
   const durationHours = unit === 'days' ? amount * 24 : amount;
-  setSharedEvent({
-    active: true,
-    activatedAt: Date.now(),
-    durationHours,
-    label: '🌟 Growth Sprint Week',
-    description: 'Limited time: +25% growth from every Water, Prune, and Fertilize.',
-    growthMultiplier: 1.25
-  });
-  el('activateEventModal').hidden = true;
-  showToast(`Growth Sprint Week activated for ${amount} ${unit}.`, 'success');
-  renderEventControl();
+  try {
+    await setSharedEvent({
+      active: true,
+      activatedAt: Date.now(),
+      durationHours,
+      label: '🌟 Growth Sprint Week',
+      description: 'Limited time: +25% growth from every Water, Prune, and Fertilize.',
+      growthMultiplier: 1.25
+    });
+    el('activateEventModal').hidden = true;
+    showToast(`Growth Sprint Week activated for ${amount} ${unit}.`, 'success');
+    renderEventControl();
+  } catch (error) {
+    showLiveActionError(error);
+  }
 });
 
-el('deactivateEventBtn').addEventListener('click', () => {
+el('deactivateEventBtn').addEventListener('click', async () => {
   const ev = getSharedEvent();
-  if (ev) setSharedEvent({ ...ev, active: false });
-  showToast('Growth Sprint Week deactivated.', 'info');
-  renderEventControl();
+  try {
+    if (ev) await setSharedEvent({ ...ev, active: false });
+    showToast('Growth Sprint Week deactivated.', 'info');
+    renderEventControl();
+  } catch (error) {
+    showLiveActionError(error);
+  }
 });
 
 /* ---------------- Init ---------------- */
@@ -1025,6 +1228,15 @@ async function initializeAdminDashboard() {
       return;
     }
 
+    firebaseBridge = bridge;
+    liveDashboard = true;
+    await loadLiveDashboardData();
+    el('addTestUserBtn').hidden = true;
+    el('resetAllBtn').hidden = true;
+    bridge.subscribeToSharedEvent(eventData => {
+      liveSharedEvent = eventData;
+      if (state.viewerRole === 'superadmin') renderEventControl();
+    });
     state.viewerRole = role;
     el('adminShell').hidden = false;
     renderAll();

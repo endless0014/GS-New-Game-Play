@@ -294,6 +294,8 @@ const el = (id) => document.getElementById(id);
 let state = loadState();
 let firebaseUserId = null;
 let firebaseAuthEmail = '';
+let remoteSharedEvent = null;
+let hasRemoteSharedEvent = false;
 let firebaseSyncReady = false;
 let unsubscribePlayerSync = null;
 let authMode = 'login';
@@ -435,6 +437,11 @@ function startFirebaseSync() {
     }
     firebaseUserId = session.user.uid;
     firebaseAuthEmail = session.user.email || '';
+    bridge.subscribeToSharedEvent(eventData => {
+      remoteSharedEvent = eventData;
+      hasRemoteSharedEvent = true;
+      renderEventBanner();
+    });
     state.profileEmail = session.user.email || state.profileEmail;
     updateAdminDashboardLink();
     firebaseSyncReady = true;
@@ -456,6 +463,19 @@ function startFirebaseSync() {
       } else {
         await bridge.savePlayerState(firebaseUserId, state);
         updateAdminDashboardLink();
+      }
+
+      const previewUid = new URLSearchParams(window.location.search).get('previewUid');
+      if (previewUid && previewUid !== firebaseUserId) {
+        const previewState = await bridge.loadPlayerState(previewUid);
+        if (!previewState) throw new Error('The selected player could not be loaded.');
+        state = { ...state, ...previewState };
+        state.profileEmail = previewState.email || previewState.profileEmail || '';
+        firebaseSyncReady = false;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        render({ persist: false });
+        scheduleInitialModal();
+        return;
       }
       subscribeToRemotePlayerState(bridge);
     } catch (error) {
@@ -2305,6 +2325,12 @@ el('leaveTeamBtn2').addEventListener('click', () => {
 const SHARED_EVENT_KEY = 'growingSeedSharedEventState_v1';
 
 function getActiveEvent() {
+  if (hasRemoteSharedEvent) {
+    const ev = remoteSharedEvent;
+    if (!ev || !ev.active) return null;
+    const expiresAt = ev.activatedAt + ev.durationHours * 3600000;
+    return Date.now() < expiresAt ? ev : null;
+  }
   try {
     const raw = localStorage.getItem(SHARED_EVENT_KEY);
     if (!raw) return null;

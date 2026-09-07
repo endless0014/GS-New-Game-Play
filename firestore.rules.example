@@ -96,21 +96,45 @@ service cloud.firestore {
              .hasOnly(['faithPoints', 'treeProgress', 'fruitCount', 'streak']);
 
       // Creating your own user doc happens once, at registration.
-      allow create: if request.auth != null && request.auth.uid == uid
+      allow create: if request.auth != null
         && request.resource.data.firstName is string
         && request.resource.data.firstName.size() > 0
         && request.resource.data.lastName is string
         && request.resource.data.lastName.size() > 0
-        && ((isLockedSuperAdminEmail(request.auth.token.email)
-          && request.resource.data.role == 'superadmin'
-          && request.resource.data.roleLocked == true)
-          || (!isLockedSuperAdminEmail(request.auth.token.email)
-            && request.resource.data.role == 'user'));
+        && (
+          (
+            request.auth.uid == uid
+            && (
+              (
+                isLockedSuperAdminEmail(request.auth.token.email)
+                && request.resource.data.role == 'superadmin'
+                && request.resource.data.roleLocked == true
+              )
+              || (
+                !isLockedSuperAdminEmail(request.auth.token.email)
+                && request.resource.data.role == 'user'
+              )
+            )
+          )
+          || (
+            isAdminOrAbove()
+            && request.resource.data.role in [
+              'user',
+              'leader',
+              'moderator',
+              'admin',
+              'superadmin'
+            ]
+          )
+        );
 
-      // Deletes should go through the soft-delete pattern (move to
-      // deletedUsers) rather than a hard delete — block direct deletes
-      // here and only allow it via a trusted Cloud Function if you add one.
-      allow delete: if false;
+      // Admins may complete the client-side soft-delete flow by removing
+      // the source document after copying it to deletedUsers. Locked
+      // Super Admins and the caller's own account remain protected.
+      allow delete: if isAdminOrAbove()
+        && uid != request.auth.uid
+        && !isLockedSuperAdminUid(uid)
+        && !isLockedSuperAdminEmail(resource.data.email);
     }
 
     // ---- publicProfiles/{uid} ----
@@ -182,7 +206,14 @@ service cloud.firestore {
 
     match /notifications/{notificationId} {
       allow read, update: if request.auth != null && resource.data.recipientUid == request.auth.uid;
-      allow create, delete: if false; // trusted server/Cloud Function only
+      allow create: if request.auth != null
+        && request.resource.data.type == 'team_reminder'
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.teamId is string
+        && request.resource.data.recipientUid is string
+        && get(/databases/$(database)/documents/teams/$(request.resource.data.teamId)).data.leaderUid == request.auth.uid
+        && request.resource.data.recipientUid in get(/databases/$(database)/documents/teams/$(request.resource.data.teamId)).data.memberUids;
+      allow delete: if false;
     }
 
     // ---- deletedUsers/{uid} — soft-deleted players ----
@@ -197,7 +228,15 @@ service cloud.firestore {
       // Only the team's leader can add/remove members, approve/decline
       // requests, or rename the team.
       allow update: if request.auth != null
-        && resource.data.leaderUid == request.auth.uid;
+        && (
+          resource.data.leaderUid == request.auth.uid
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['requests'])
+            && request.resource.data.requests.size() == resource.data.requests.size() + 1
+            && request.resource.data.requests.hasAll(resource.data.requests)
+            && request.auth.uid != resource.data.leaderUid
+          )
+        );
 
       // Any signed-in user can create a new team (the 500 FP cost should
       // ideally be enforced by a Cloud Function that checks the balance
