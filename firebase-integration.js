@@ -110,7 +110,9 @@ async function initFirebase() {
 
   _app = initializeApp(FIREBASE_CONFIG);
   _auth = authModule.getAuth(_app);
-  _db = firestoreModule.getFirestore(_app);
+  _db = firestoreModule.initializeFirestore(_app, {
+    experimentalAutoDetectLongPolling: true
+  });
 
   // Stash the modules so the functions below can use them without
   // re-importing on every call.
@@ -120,17 +122,25 @@ async function initFirebase() {
 }
 
 async function ensureUserDocument(user) {
-  const existing = await loadPlayerState(user.uid);
-  if (!existing) {
-    await createUserDocument(user.uid, {
-      name: user.displayName || '',
-      email: user.email || '',
-      authType: 'google',
-      role: isLockedSuperAdminEmail(user.email) ? 'superadmin' : 'user',
-      roleLocked: isLockedSuperAdminEmail(user.email)
-    });
+  try {
+    const existing = await loadPlayerState(user.uid);
+    if (!existing) {
+      await createUserDocument(user.uid, {
+        name: user.displayName || '',
+        email: user.email || '',
+        authType: 'google',
+        role: isLockedSuperAdminEmail(user.email) ? 'superadmin' : 'user',
+        roleLocked: isLockedSuperAdminEmail(user.email)
+      });
+    }
+    return { user, isNew: !existing };
+  } catch (error) {
+    if (error?.code === 'unavailable') {
+      console.warn('Firestore is unavailable; continuing with local progress.', error);
+      return { user, isNew: false, profileSyncUnavailable: true };
+    }
+    throw error;
   }
-  return { user, isNew: !existing };
 }
 
 async function connectLiveSession() {

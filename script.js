@@ -461,6 +461,7 @@ function subscribeToRemotePlayerState(bridge) {
 
 function getGoogleSignInErrorMessage(error) {
   const messages = {
+    'unavailable': 'Google sign-in worked, but Firestore is currently unreachable. You can continue locally; check your connection and Firebase Firestore setup to restore syncing.',
     'auth/unauthorized-domain': 'This site is not authorized in Firebase. Add the current site domain under Firebase Authentication > Settings > Authorized domains.',
     'auth/operation-not-allowed': 'Google sign-in is not enabled. Enable Google under Firebase Authentication > Sign-in method.',
     'auth/popup-blocked': 'Your browser blocked the Google sign-in popup. Allow popups for this site and try again.',
