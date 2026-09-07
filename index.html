@@ -21,9 +21,9 @@
     <p class="login-copy" id="loginCopy">Grow your faith journey</p>
     <form class="login-form" id="loginForm" autocomplete="off">
       <label for="loginEmail">Email</label>
-      <input id="loginEmail" type="email" autocomplete="email" required />
+      <input id="loginEmail" name="gs_account_email" type="email" autocomplete="off" readonly required />
       <label for="loginPassword">Password</label>
-      <input id="loginPassword" type="password" autocomplete="current-password" minlength="6" required />
+      <input id="loginPassword" name="gs_account_password" type="password" autocomplete="new-password" readonly minlength="6" required />
       <button class="btn" type="submit" id="emailLoginBtn" style="width:100%;">Login</button>
     </form>
     <div class="login-divider"><span>or</span></div>

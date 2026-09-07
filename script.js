@@ -285,7 +285,10 @@ const el = (id) => document.getElementById(id);
 ['loginEmail', 'loginPassword'].forEach(id => {
   const field = el(id);
   field.value = '';
-  field.addEventListener('focus', () => { field.readOnly = false; }, { once: true });
+  field.addEventListener('focus', () => {
+    field.value = '';
+    field.readOnly = false;
+  }, { once: true });
 });
 let state = loadState();
 let firebaseUserId = null;
