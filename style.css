@@ -1600,16 +1600,29 @@ button {
 .modal-close-x {
   position: absolute;
   top: 0.6rem;
-  right: 0.7rem;
-  left: auto;
+  right: 0.75rem !important;
+  left: auto !important;
   z-index: 1;
-  background: none;
-  border: none;
-  font-size: 1.4rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--danger);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 800;
   line-height: 1;
-  color: var(--text-muted);
-  padding: 0.3rem;
+  padding: 0;
   cursor: pointer;
+  box-shadow: 0 3px 10px rgba(35, 50, 40, 0.2);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.modal-close-x:hover {
+  background: #a92f2b;
+  transform: scale(1.06);
 }
 
 .team-modal-content {
