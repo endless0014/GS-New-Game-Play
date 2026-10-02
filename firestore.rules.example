@@ -1,10 +1,8 @@
 // ============================================================
-// Growing Seed — Firestore Security Rules (EXAMPLE, NOT DEPLOYED)
+// Growing Seed — Firestore Security Rules
 // ============================================================
 //
-// This file is not deployed anywhere by this project. It's a starting
-// point for when firebase-integration.js is actually activated (see the
-// "HOW TO ACTIVATE" section at the bottom of that file).
+// firebase.json deploys this file directly with the Firebase CLI.
 //
 // WHY THIS FILE MATTERS: right now, every permission check in the
 // sandbox (Super Admin locks, who can reset progress, who can activate
@@ -15,8 +13,8 @@
 // These rules move that enforcement to the server, where a player
 // cannot override it no matter what they do in their own browser.
 //
-// To use: rename this file to firestore.rules, fill in the two locked
-// Super Admin UIDs below (not emails — Firestore rules check the
+// Before deploying, fill in the two locked Super Admin UIDs below (not
+// emails — Firestore rules check the
 // authenticated UID, so look up each locked account's UID once in the
 // Firebase Console → Authentication tab after they've registered), and
 // deploy with `firebase deploy --only firestore:rules` or paste into
@@ -61,19 +59,47 @@ service cloud.firestore {
         (currentUserRole() == 'moderator' || isAdminOrAbove());
     }
 
+    function hasAcceptedPulseRequest(fromUid, toUid) {
+      let requestId = fromUid + '_' + toUid;
+      return exists(/databases/$(database)/documents/pulseRequests/$(requestId))
+        && get(/databases/$(database)/documents/pulseRequests/$(requestId)).data.status == 'accepted';
+    }
+
     function canViewProfile(uid) {
       return request.auth != null
         && (uid == request.auth.uid
           || resource.data.profileVisibility == 'public'
           || (resource.data.profileVisibility == 'followers'
-            && exists(/databases/$(database)/documents/connections/$(uid)/users/$(request.auth.uid))));
+            && (
+              exists(/databases/$(database)/documents/connections/$(uid)/users/$(request.auth.uid))
+              || hasAcceptedPulseRequest(uid, request.auth.uid)
+              || hasAcceptedPulseRequest(request.auth.uid, uid)
+            )));
+    }
+
+    function isValidCommentAppend(oldComments, newComments) {
+      let comment = newComments[oldComments.size()];
+      return newComments.size() == oldComments.size() + 1
+        && newComments.size() <= 100
+        && newComments.hasAll(oldComments)
+        && comment.keys().hasOnly(['id', 'uid', 'author', 'text'])
+        && comment.keys().hasAll(['id', 'uid', 'author', 'text'])
+        && comment.id is string
+        && comment.uid == request.auth.uid
+        && comment.author is string
+        && comment.author.size() <= 80
+        && comment.text is string
+        && comment.text.size() > 0
+        && comment.text.size() <= 120;
     }
 
     // ---- users/{uid} ----
     match /users/{uid} {
-      // Anyone signed in can read player profiles (needed for the
-      // leaderboard, team rosters, etc.)
-      allow read: if request.auth != null;
+      // Private gameplay documents are readable by their owner and staff.
+      // Public discoverability belongs in publicProfiles/{uid} below.
+      allow get: if request.auth != null
+        && (request.auth.uid == uid || isModeratorOrAbove());
+      allow list: if isModeratorOrAbove();
 
       // A player can update their own document, EXCEPT the fields that
       // must go through an admin action or a locked/one-time rule.
@@ -179,15 +205,59 @@ service cloud.firestore {
     // Feed posts are bounded by ownership and moderation state. Production
     // writes should also be checked by a callable function for caption rules.
     match /faithFeedPosts/{postId} {
-      allow read: if request.auth != null
-        && resource.data.visibility == 'public'
-        && !exists(/databases/$(database)/documents/blocks/$(request.auth.uid)/users/$(resource.data.uid))
-        && !exists(/databases/$(database)/documents/mutes/$(request.auth.uid)/users/$(resource.data.uid));
+      allow read: if isModeratorOrAbove()
+        || (request.auth != null
+          && resource.data.moderationStatus == 'approved'
+          && resource.data.visibility == 'public');
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.moderationStatus == 'pending'
+        && request.resource.data.visibility == 'public'
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 200
+        && request.resource.data.icon is string
+        && request.resource.data.icon.size() <= 16
+        && request.resource.data.get('reactions', {}) == {}
+        && request.resource.data.get('comments', []) == []
+        && request.resource.data.createdAt == request.time
+        && (!('imageDataUrl' in request.resource.data)
+          || request.resource.data.imageDataUrl is string
+          && request.resource.data.imageDataUrl.size() <= 900000);
+      // Authors may edit a pending post, but cannot approve their own content.
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.moderationStatus == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'text', 'imageDataUrl', 'updatedAt'
+        ])
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 200;
-      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      // Moderators make the server-side approval decision.
+      allow update: if isModeratorOrAbove()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'moderationStatus', 'moderationNote', 'moderatedAt', 'moderatedBy'
+        ])
+        && request.resource.data.moderationStatus in ['approved', 'rejected', 'hidden'];
+      // Each signed-in player can set or clear only their own reaction.
+      allow update: if request.auth != null
+        && resource.data.moderationStatus == 'approved'
+        && resource.data.visibility == 'public'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+        && request.resource.data.get('reactions', {}).diff(resource.data.get('reactions', {}))
+             .affectedKeys().hasOnly([request.auth.uid])
+        && (!(request.auth.uid in request.resource.data.get('reactions', {}))
+          || request.resource.data.reactions[request.auth.uid] in ['🔥', '🙏', '👏']);
+      // Comments append atomically so concurrent commenters do not overwrite each other.
+      allow update: if request.auth != null
+        && resource.data.moderationStatus == 'approved'
+        && resource.data.visibility == 'public'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments'])
+        && isValidCommentAppend(
+          resource.data.get('comments', []),
+          request.resource.data.get('comments', [])
+        );
+      allow delete: if request.auth != null
+        && (resource.data.uid == request.auth.uid || isModeratorOrAbove());
     }
 
     match /reports/{reportId} {
@@ -200,8 +270,17 @@ service cloud.firestore {
     }
 
     match /shareHistory/{shareId} {
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.sourceType in ['rank', 'teamRank', 'progress', 'verse', 'feedPost']
+        && request.resource.data.caption is string
+        && request.resource.data.caption.size() <= 200
+        && (!('sourceId' in request.resource.data)
+          || request.resource.data.sourceId == null
+          || request.resource.data.sourceId is string)
+        && request.resource.data.createdAt == request.time;
       allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
     }
 
     match /notifications/{notificationId} {

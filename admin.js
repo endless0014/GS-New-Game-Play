@@ -253,6 +253,10 @@ function renderReports() {
         <button data-report-status="reviewed" data-report-id="${escapeHtml(report.id)}">Mark reviewed</button>
         <button data-report-status="resolved" data-report-id="${escapeHtml(report.id)}">Resolve</button>
         <button class="danger-action" data-report-status="dismissed" data-report-id="${escapeHtml(report.id)}">Dismiss</button>
+        ${report.targetType === 'post' ? `
+          <button data-post-status="approved" data-post-id="${escapeHtml(report.targetId)}">Approve post</button>
+          <button class="danger-action" data-post-status="hidden" data-post-id="${escapeHtml(report.targetId)}">Hide post</button>
+        ` : ''}
       </div>
     </div>
   `).join('');
@@ -265,6 +269,25 @@ function renderReports() {
         showToast(`Report marked ${button.dataset.reportStatus}.`, 'success');
         if (liveDashboard) await refreshLiveDashboard();
         else renderAll();
+      } catch (error) {
+        showLiveActionError(error);
+      }
+    });
+  });
+  el('reportList').querySelectorAll('[data-post-status]').forEach(button => {
+    button.addEventListener('click', async () => {
+      try {
+        if (!liveDashboard) {
+          showToast('Post moderation requires the live Firebase dashboard.', 'warning');
+          return;
+        }
+        await firebaseBridge.setFaithFeedPostModerationStatus(
+          button.dataset.postId,
+          button.dataset.postStatus,
+          button.dataset.postStatus === 'hidden' ? 'Hidden after moderation review.' : ''
+        );
+        showToast(`Post ${button.dataset.postStatus}.`, 'success');
+        await refreshLiveDashboard();
       } catch (error) {
         showLiveActionError(error);
       }

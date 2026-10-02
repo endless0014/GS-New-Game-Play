@@ -372,6 +372,36 @@ async function respondToPulseRequest(requestId, status) {
   await updateDoc(doc(_db, 'pulseRequests', requestId), { status });
 }
 
+async function loadFaithFriendData(uid) {
+  const { collection, getDocs, orderBy, query, where } = initFirebase._firestoreModule;
+  const requests = collection(_db, 'pulseRequests');
+  const queries = [
+    query(requests, where('fromUid', '==', uid), where('status', '==', 'accepted')),
+    query(requests, where('toUid', '==', uid), where('status', '==', 'accepted')),
+    query(requests, where('toUid', '==', uid), where('status', '==', 'pending'), orderBy('createdAt', 'desc')),
+    query(requests, where('fromUid', '==', uid), where('status', '==', 'pending'), orderBy('createdAt', 'desc'))
+  ];
+  const snapshots = await Promise.all(queries.map(getDocs));
+  const rows = snapshots.flatMap(snapshot => snapshot.docs.map(snap => ({ id: snap.id, ...snap.data() })));
+  const unique = new Map(rows.map(row => [row.id, row]));
+  const friends = [];
+  const incoming = [];
+  const outgoing = [];
+  for (const request of unique.values()) {
+    const otherUid = request.fromUid === uid ? request.toUid : request.fromUid;
+    const profile = await loadPublicProfile(otherUid).catch(() => null);
+    const person = {
+      uid: otherUid,
+      name: profile?.name || request.targetName || request.fromName || otherUid,
+      avatarId: profile?.avatarId || null
+    };
+    if (request.status === 'accepted') friends.push(person);
+    else if (request.toUid === uid) incoming.push({ ...request, ...person });
+    else outgoing.push({ ...request, ...person });
+  }
+  return { friends, incoming, outgoing };
+}
+
 async function setUserRelationship(targetUid, relationship, enabled = true) {
   const { collection, deleteDoc, doc, serverTimestamp, setDoc } = initFirebase._firestoreModule;
   if (!['blocks', 'mutes'].includes(relationship)) throw new Error('Invalid relationship.');
@@ -395,6 +425,45 @@ async function reportContent(targetType, targetId, reason) {
   });
 }
 
+async function createFaithFeedPost(post) {
+  const { addDoc, collection, serverTimestamp } = initFirebase._firestoreModule;
+  const text = String(post.text || '').trim().slice(0, 200);
+  const icon = String(post.icon || '📝').slice(0, 16);
+  const imageDataUrl = post.imageDataUrl ? String(post.imageDataUrl) : '';
+  if ((!text && !imageDataUrl) || imageDataUrl.length > 900000) {
+    throw new Error('Posts must contain text or an image, and images must be under 900 KB.');
+  }
+
+  const data = {
+    uid: _auth.currentUser.uid,
+    name: String(post.name || '').trim().slice(0, 80),
+    icon,
+    text,
+    reactions: {},
+    comments: [],
+    visibility: 'public',
+    moderationStatus: 'pending',
+    resharedFrom: post.resharedFrom || null,
+    createdAt: serverTimestamp()
+  };
+  if (imageDataUrl) data.imageDataUrl = imageDataUrl;
+  const created = await addDoc(collection(_db, 'faithFeedPosts'), data);
+  return created.id;
+}
+
+async function setFaithFeedPostModerationStatus(postId, moderationStatus, moderationNote = '') {
+  const { doc, serverTimestamp, updateDoc } = initFirebase._firestoreModule;
+  if (!['approved', 'rejected', 'hidden'].includes(moderationStatus)) {
+    throw new Error('Invalid moderation status.');
+  }
+  await updateDoc(doc(_db, 'faithFeedPosts', postId), {
+    moderationStatus,
+    moderationNote: String(moderationNote || '').trim().slice(0, 500),
+    moderatedAt: serverTimestamp(),
+    moderatedBy: _auth.currentUser.uid
+  });
+}
+
 function subscribeToNotifications(uid, callback) {
   const { collection, limit, onSnapshot, orderBy, query, where } = initFirebase._firestoreModule;
   const notificationsQuery = query(
@@ -413,16 +482,47 @@ async function markNotificationRead(notificationId) {
   await updateDoc(doc(_db, 'notifications', notificationId), { read: true });
 }
 
-async function loadFaithFeedPage(pageSize = 20, cursor = null) {
-  const { collection, getDocs, limit, orderBy, query, startAfter } = initFirebase._firestoreModule;
-  const constraints = [orderBy('createdAt', 'desc'), limit(Math.min(Math.max(pageSize, 1), 50))];
-  if (cursor) constraints.unshift(startAfter(cursor));
-  const snapshot = await getDocs(query(collection(_db, 'faithFeedPosts'), ...constraints));
-  return {
-    posts: snapshot.docs.map(snap => ({ id: snap.id, ...snap.data() })),
-    nextCursor: snapshot.docs.length ? snapshot.docs[snapshot.docs.length - 1] : null,
-    hasMore: snapshot.docs.length === Math.min(Math.max(pageSize, 1), 50)
-  };
+function subscribeToFaithFeed(callback, pageSize = 50) {
+  const { collection, limit, onSnapshot, orderBy, query, where } = initFirebase._firestoreModule;
+  const feedQuery = query(
+    collection(_db, 'faithFeedPosts'),
+    where('moderationStatus', '==', 'approved'),
+    where('visibility', '==', 'public'),
+    orderBy('createdAt', 'desc'),
+    limit(Math.min(Math.max(pageSize, 1), 50))
+  );
+  return onSnapshot(feedQuery, snapshot => {
+    callback(snapshot.docs.map(snap => {
+      const post = snap.data();
+      return {
+        id: snap.id,
+        ...post,
+        reactions: post.reactions && typeof post.reactions === 'object' ? post.reactions : {},
+        comments: Array.isArray(post.comments) ? post.comments : []
+      };
+    }));
+  });
+}
+
+async function setFaithFeedReaction(postId, emoji) {
+  const { deleteField, doc, FieldPath, updateDoc } = initFirebase._firestoreModule;
+  const uid = _auth.currentUser.uid;
+  const reaction = ['🔥', '🙏', '👏'].includes(emoji) ? emoji : null;
+  await updateDoc(doc(_db, 'faithFeedPosts', postId), new FieldPath('reactions', uid), reaction || deleteField());
+}
+
+async function addFaithFeedComment(postId, comment) {
+  const { arrayUnion, doc, updateDoc } = initFirebase._firestoreModule;
+  const text = String(comment.text || '').trim().slice(0, 120);
+  if (!text) throw new Error('Write a comment first.');
+  await updateDoc(doc(_db, 'faithFeedPosts', postId), {
+    comments: arrayUnion({
+      id: `c_${Math.random().toString(36).slice(2, 11)}`,
+      uid: _auth.currentUser.uid,
+      author: String(comment.author || '').trim().slice(0, 80),
+      text
+    })
+  });
 }
 
 async function recordShare(sourceType, sourceId, caption = '') {
@@ -579,6 +679,13 @@ window.GrowingSeedFirebase = {
   loadDeletedUsers,
   loadReports,
   updateReportStatus,
+  reportContent,
+  createFaithFeedPost,
+  setFaithFeedPostModerationStatus,
+  subscribeToFaithFeed,
+  setFaithFeedReaction,
+  addFaithFeedComment,
+  recordShare,
   savePlayerState,
   subscribeToPlayerState,
   getCurrentUserRole,
@@ -590,6 +697,10 @@ window.GrowingSeedFirebase = {
   adminRestoreUser,
   setSharedEvent,
   subscribeToSharedEvent,
+  sendPulseRequest,
+  cancelPulseRequest,
+  respondToPulseRequest,
+  loadFaithFriendData,
   loadAllTeams,
   declineJoinRequest,
   sendTeamReminder

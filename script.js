@@ -298,6 +298,7 @@ let remoteSharedEvent = null;
 let hasRemoteSharedEvent = false;
 let firebaseSyncReady = false;
 let unsubscribePlayerSync = null;
+let unsubscribeFaithFeed = null;
 let authMode = 'login';
 
 function defaultState() {
@@ -352,6 +353,9 @@ function defaultState() {
     blockedUsers: [],
     mutedUsers: [],
     pulseRequests: [],
+    faithFriends: [],
+    incomingFaithFriendRequests: [],
+    outgoingFaithFriendRequests: [],
     notifications: [],
     shareHistory: [],
     feedVisibleCount: 20
@@ -384,6 +388,9 @@ function loadState() {
     if (!Array.isArray(merged.blockedUsers)) merged.blockedUsers = [];
     if (!Array.isArray(merged.mutedUsers)) merged.mutedUsers = [];
     if (!Array.isArray(merged.pulseRequests)) merged.pulseRequests = [];
+    if (!Array.isArray(merged.faithFriends)) merged.faithFriends = [];
+    if (!Array.isArray(merged.incomingFaithFriendRequests)) merged.incomingFaithFriendRequests = [];
+    if (!Array.isArray(merged.outgoingFaithFriendRequests)) merged.outgoingFaithFriendRequests = [];
     if (!Array.isArray(merged.notifications)) merged.notifications = [];
     if (!Array.isArray(merged.shareHistory)) merged.shareHistory = [];
     if (!Number.isInteger(merged.feedVisibleCount) || merged.feedVisibleCount < 1) merged.feedVisibleCount = 20;
@@ -1023,7 +1030,11 @@ function switchTab(tab) {
   el('appHeader').hidden = tab === 'profile';
   if (tab === 'feeds') renderFaithFeeds();
   if (tab === 'ranking') renderRanking();
-  if (tab === 'profile') renderBadges();
+  if (tab === 'profile') {
+    renderBadges();
+    renderProfileSafety();
+    loadFaithFriends();
+  }
 }
 
 /* ---------------- Toasts ---------------- */
@@ -1587,8 +1598,8 @@ function renderTeamBattle() {
   renderPodiumAndList(el('teamPodiumContainer'), el('teamBattleList'), rows, row => `🍎 ${row.fruit}`);
 }
 
-function openShareCaptionModal(text, icon, successMessage, imageDataUrl = null, sourcePost = null) {
-  pendingRankShare = { text, icon, successMessage, imageDataUrl, sourcePost };
+function openShareCaptionModal(text, icon, successMessage, imageDataUrl = null, sourcePost = null, sourceType = 'progress') {
+  pendingRankShare = { text, icon, successMessage, imageDataUrl, sourcePost, sourceType };
   el('rankSharePreview').textContent = text;
   el('rankShareCaption').value = '';
   el('rankShareModal').hidden = false;
@@ -1600,11 +1611,18 @@ function closeRankShareModal() {
   pendingRankShare = null;
 }
 
-function confirmShareWithCaption(text, icon, successMessage, imageDataUrl, sourcePost = null) {
+function confirmShareWithCaption(text, icon, successMessage, imageDataUrl, sourcePost = null, sourceType = 'progress') {
   const caption = el('rankShareCaption').value.trim();
   const postText = caption ? `${caption}\n${text}` : text;
   postToFaithFeed(postText, icon, imageDataUrl, sourcePost);
-  state.shareHistory.unshift({ sourceType: sourcePost ? 'feedPost' : 'share', sourceId: sourcePost ? sourcePost.key : null, caption, createdAt: new Date().toISOString() });
+  const shareType = sourcePost ? 'feedPost' : sourceType;
+  const shareSourceId = sourcePost ? sourcePost.key : null;
+  state.shareHistory.unshift({ sourceType: shareType, sourceId: shareSourceId, caption, createdAt: new Date().toISOString() });
+  if (firebaseSyncReady && window.GrowingSeedFirebase?.recordShare) {
+    window.GrowingSeedFirebase.recordShare(shareType, shareSourceId, caption).catch(error => {
+      console.error('Firebase share history failed; local history is still available.', error);
+    });
+  }
   addLocalNotification('reshare', sourcePost ? sourcePost.key : null, 'Your reshare is now in Faith Feeds.');
   saveState();
   SFX.tap();
@@ -1617,7 +1635,7 @@ el('shareIndividualRankBtn').addEventListener('click', () => {
   if (!rank) return;
   const metric = rankingMetric === 'fp' ? 'Total FP' : 'Tree Progress';
   const row = currentIndividualRankingRows[rank - 1];
-  openShareCaptionModal(`shared their individual rank: #${rank} • ${metric} ${row[rankingMetric]} 🏆`, '🏆', 'Individual rank shared to Faith Feeds!');
+  openShareCaptionModal(`shared their individual rank: #${rank} • ${metric} ${row[rankingMetric]} 🏆`, '🏆', 'Individual rank shared to Faith Feeds!', null, null, 'rank');
 });
 
 el('shareTeamRankBtn').addEventListener('click', () => {
@@ -1627,11 +1645,11 @@ el('shareTeamRankBtn').addEventListener('click', () => {
     return;
   }
   const row = currentTeamRankingRows[rank - 1];
-  openShareCaptionModal(`shared their team rank: #${rank} • ${row.name} • ${row.fruit} fruit 🏆`, '🏆', 'Team rank shared to Faith Feeds!');
+  openShareCaptionModal(`shared their team rank: #${rank} • ${row.name} • ${row.fruit} fruit 🏆`, '🏆', 'Team rank shared to Faith Feeds!', null, null, 'teamRank');
 });
 
 el('confirmRankShareBtn').addEventListener('click', () => {
-  if (pendingRankShare) confirmShareWithCaption(pendingRankShare.text, pendingRankShare.icon, pendingRankShare.successMessage, pendingRankShare.imageDataUrl, pendingRankShare.sourcePost);
+  if (pendingRankShare) confirmShareWithCaption(pendingRankShare.text, pendingRankShare.icon, pendingRankShare.successMessage, pendingRankShare.imageDataUrl, pendingRankShare.sourcePost, pendingRankShare.sourceType);
 });
 el('closeRankShareBtn').addEventListener('click', closeRankShareModal);
 el('cancelRankShareBtn').addEventListener('click', closeRankShareModal);
@@ -1978,6 +1996,7 @@ el('faithFeedsNavBtn').addEventListener('click', () => {
   try {
     switchTab('feeds');
     renderFaithFeeds();
+    loadLiveFaithFeed();
   } catch (err) {
     console.error('Faith Feeds failed to render:', err);
     showToast('Something went wrong opening Faith Feeds — please reload the page.', 'error');
@@ -1992,16 +2011,21 @@ function renderFaithFeeds() {
     icon: p.icon,
     text: p.text,
     imageDataUrl: p.imageDataUrl,
+    reactions: p.reactions || {},
+    moderationStatus: p.moderationStatus || 'approved',
     createdAt: p.createdAt,
     comments: Array.isArray(p.comments) ? p.comments : []
   }));
   const allPosts = userPosts
+    .filter(post => !['rejected', 'hidden'].includes(post.moderationStatus))
     .filter(post => !state.blockedUsers.includes(post.uid) && !state.mutedUsers.includes(post.uid));
   const visiblePosts = allPosts.slice(0, state.feedVisibleCount);
 
   el('faithFeedList').innerHTML = visiblePosts.map(post => {
-    const myReaction = state.faithFeedReactions[post.key];
+    const reactions = post.reactions || {};
+    const myReaction = firebaseUserId ? reactions[firebaseUserId] : state.faithFeedReactions[post.key];
     const isYou = post.uid === LOCAL_AUTHOR_ID || post.name === 'You';
+    const canInteract = post.moderationStatus === 'approved';
     const comments = Array.isArray(post.comments) ? post.comments : [];
     return `
       <div class="team-feed-item ${isYou ? 'is-your-post' : ''}">
@@ -2014,8 +2038,8 @@ function renderFaithFeeds() {
         ${post.imageDataUrl ? `<img class="faith-post-image" src="${post.imageDataUrl}" alt="Photo shared by ${escapeHtml(post.name)}" />` : ''}
         <div class="team-feed-reactions">
           ${['🔥', '🙏', '👏'].map(emoji => `
-            <button class="reaction-btn ${myReaction === emoji ? 'active' : ''}" data-post-key="${post.key}" data-emoji="${emoji}">
-              ${emoji} <span>${myReaction === emoji ? 1 : 0}</span>
+            <button class="reaction-btn ${myReaction === emoji ? 'active' : ''}" data-post-key="${post.key}" data-emoji="${emoji}" ${canInteract ? '' : 'disabled'}>
+              ${emoji} <span>${Object.values(reactions).filter(reaction => reaction === emoji).length || (myReaction === emoji ? 1 : 0)}</span>
             </button>
           `).join('')}
         </div>
@@ -2027,8 +2051,8 @@ function renderFaithFeeds() {
           `).join('') : '<div class="faith-comment empty">No comments yet.</div>'}
         </div>
         <div class="feed-comment-compose">
-          <input class="comment-input" type="text" maxlength="120" data-post-key="${post.key}" placeholder="Write a comment…" />
-          <button class="btn small comment-btn" data-post-key="${post.key}">Comment</button>
+          <input class="comment-input" type="text" maxlength="120" data-post-key="${post.key}" placeholder="Write a comment…" ${canInteract ? '' : 'disabled'} />
+          <button class="btn small comment-btn" data-post-key="${post.key}" ${canInteract ? '' : 'disabled'}>Comment</button>
         </div>
       </div>
     `;
@@ -2042,6 +2066,15 @@ function renderFaithFeeds() {
     btn.addEventListener('click', () => {
       const key = btn.dataset.postKey;
       const emoji = btn.dataset.emoji;
+      const post = visiblePosts.find(item => item.key === key);
+      const nextReaction = (firebaseUserId ? post?.reactions?.[firebaseUserId] : state.faithFeedReactions[key]) === emoji ? null : emoji;
+      if (firebaseSyncReady && firebaseUserId && post?.uid !== LOCAL_AUTHOR_ID && window.GrowingSeedFirebase?.setFaithFeedReaction) {
+        window.GrowingSeedFirebase.setFaithFeedReaction(post.id, nextReaction).catch(error => {
+          console.error('Faith Feed reaction failed:', error);
+          showToast('Your reaction could not be saved.', 'error');
+        });
+        return;
+      }
       state.faithFeedReactions[key] = state.faithFeedReactions[key] === emoji ? undefined : emoji;
       if (state.faithFeedReactions[key]) addLocalNotification('reaction', key, `You reacted ${emoji} to a Faith Feed post.`);
       SFX.tap();
@@ -2099,15 +2132,25 @@ function renderFaithFeeds() {
         return;
       }
 
-      const targetPost = state.faithFeedPosts.find(p => `user-${p.id}` === key);
+      const targetPost = visiblePosts.find(post => post.key === key);
       if (!targetPost) return;
+      if (firebaseSyncReady && firebaseUserId && targetPost.uid !== LOCAL_AUTHOR_ID && window.GrowingSeedFirebase?.addFaithFeedComment) {
+        window.GrowingSeedFirebase.addFaithFeedComment(targetPost.id, { author: getPlayerDisplayName(), text })
+          .then(() => {
+            input.value = '';
+            SFX.tap();
+          })
+          .catch(error => {
+            console.error('Faith Feed comment failed:', error);
+            showToast(error.message || 'Your comment could not be saved.', 'error');
+          });
+        return;
+      }
 
-      targetPost.comments = Array.isArray(targetPost.comments) ? targetPost.comments : [];
-      targetPost.comments.push({
-        id: 'c_' + Math.random().toString(36).slice(2, 9),
-        author: 'You',
-        text
-      });
+      const localPost = state.faithFeedPosts.find(post => post.id === targetPost.id);
+      if (!localPost) return;
+      localPost.comments = Array.isArray(localPost.comments) ? localPost.comments : [];
+      localPost.comments.push({ id: 'c_' + Math.random().toString(36).slice(2, 9), uid: LOCAL_AUTHOR_ID, author: getPlayerDisplayName(), text });
       input.value = '';
       SFX.tap();
       saveState();
@@ -2122,6 +2165,18 @@ function renderFaithFeeds() {
       const btn = el('faithFeedList').querySelector(`.comment-btn[data-post-key="${input.dataset.postKey}"]`);
       if (btn) btn.click();
     });
+  });
+}
+
+async function loadLiveFaithFeed() {
+  if (!firebaseSyncReady || unsubscribeFaithFeed || !window.GrowingSeedFirebase?.subscribeToFaithFeed) return;
+  unsubscribeFaithFeed = window.GrowingSeedFirebase.subscribeToFaithFeed(posts => {
+    state.faithFeedPosts = posts.map(post => ({
+      ...post,
+      moderationStatus: post.moderationStatus || 'approved',
+      comments: Array.isArray(post.comments) ? post.comments : []
+    }));
+    renderFaithFeeds();
   });
 }
 
@@ -2142,6 +2197,47 @@ function sendLocalPulseRequest(targetUid, targetName) {
   saveState();
   showToast(`PULSE Request sent to ${targetName}.`, 'success');
   return true;
+}
+
+async function loadFaithFriends() {
+  if (firebaseSyncReady && firebaseUserId && window.GrowingSeedFirebase?.loadFaithFriendData) {
+    try {
+      const data = await window.GrowingSeedFirebase.loadFaithFriendData(firebaseUserId);
+      state.faithFriends = data.friends;
+      state.incomingFaithFriendRequests = data.incoming;
+      state.outgoingFaithFriendRequests = data.outgoing;
+      renderProfileSafety();
+      return;
+    } catch (error) {
+      console.warn('Faith Friends failed to load; showing local relationships.', error);
+    }
+  }
+  const accepted = state.pulseRequests.filter(request => request.status === 'accepted');
+  state.faithFriends = accepted.map(request => ({
+    uid: request.fromUid === LOCAL_AUTHOR_ID ? request.toUid : request.fromUid,
+    name: request.fromUid === LOCAL_AUTHOR_ID ? request.targetName : request.name
+  }));
+  state.incomingFaithFriendRequests = state.pulseRequests.filter(request => request.toUid === LOCAL_AUTHOR_ID && request.status === 'pending');
+  state.outgoingFaithFriendRequests = state.pulseRequests.filter(request => request.fromUid === LOCAL_AUTHOR_ID && request.status === 'pending');
+  renderProfileSafety();
+}
+
+function renderFaithFriends() {
+  const list = el('pulseRequestList');
+  if (!list) return;
+  const friends = Array.isArray(state.faithFriends) ? state.faithFriends : [];
+  const incoming = Array.isArray(state.incomingFaithFriendRequests) ? state.incomingFaithFriendRequests : [];
+  const outgoing = Array.isArray(state.outgoingFaithFriendRequests) ? state.outgoingFaithFriendRequests : [];
+  const friendRows = friends.length
+    ? `<div class="faith-friend-list">${friends.map(friend => `<div class="notification-row"><strong>${escapeHtml(friend.name || friend.uid)}</strong><span class="lock-hint">Faith Friend</span></div>`).join('')}</div>`
+    : '<p class="empty-state">No Faith Friends yet.</p>';
+  const incomingRows = incoming.length
+    ? `<p class="field-label">Friend requests</p>${incoming.map(request => `<div class="notification-row"><strong>${escapeHtml(request.name || request.fromUid)}</strong><span><button class="btn small accept-friend-btn" data-request-id="${escapeHtml(request.id)}" type="button">Accept</button> <button class="btn small secondary decline-friend-btn" data-request-id="${escapeHtml(request.id)}" type="button">Decline</button></span></div>`).join('')}`
+    : '';
+  const outgoingRows = outgoing.length
+    ? `<p class="field-label">Sent requests</p>${outgoing.map(request => `<div class="notification-row"><strong>${escapeHtml(request.name || request.toUid)}</strong><button class="btn small cancel-pulse-btn" data-request-id="${escapeHtml(request.id)}" type="button">Cancel</button></div>`).join('')}`
+    : '';
+  list.innerHTML = friendRows + incomingRows + outgoingRows;
 }
 
 function cancelLocalPulseRequest(requestId) {
@@ -2167,6 +2263,11 @@ function reportLocalContent(targetType, targetId) {
   if (!reason || !reason.trim()) return;
   state.reports = Array.isArray(state.reports) ? state.reports : [];
   state.reports.push({ id: `report_${Date.now()}`, reporterUid: LOCAL_AUTHOR_ID, targetType, targetId, reason: reason.trim().slice(0, 500), status: 'open', createdAt: new Date().toISOString() });
+  if (firebaseSyncReady && window.GrowingSeedFirebase?.reportContent) {
+    window.GrowingSeedFirebase.reportContent(targetType, targetId.replace(/^user-/, ''), reason.trim()).catch(error => {
+      console.error('Firebase report failed; local report is still available.', error);
+    });
+  }
   addLocalNotification('report_submitted', targetId, 'Thanks. Your report was sent for moderator review.');
   saveState();
   showToast('Report submitted for review.', 'success');
@@ -2237,17 +2338,30 @@ el('faithFeedImageInput').addEventListener('change', event => {
 function postToFaithFeed(text, icon, imageDataUrl = null, sourcePost = null) {
   const trimmed = text.trim();
   if (!trimmed && !imageDataUrl) return;
-  state.faithFeedPosts.unshift({
+  const post = {
     id: 'p_' + Math.random().toString(36).slice(2, 9),
     uid: LOCAL_AUTHOR_ID,
     name: getPlayerDisplayName(),
     icon: icon || '📝',
     text: trimmed,
     imageDataUrl,
+    moderationStatus: firebaseSyncReady ? 'pending' : 'approved',
     resharedFrom: sourcePost ? { id: sourcePost.key, name: sourcePost.name } : null,
     createdAt: new Date().toISOString(),
     comments: []
-  });
+  };
+  state.faithFeedPosts.unshift(post);
+  if (firebaseSyncReady && window.GrowingSeedFirebase?.createFaithFeedPost) {
+    window.GrowingSeedFirebase.createFaithFeedPost(post)
+      .then(id => {
+        post.id = id;
+        saveState();
+      })
+      .catch(error => {
+        console.error('Firebase Faith Feed post failed; local post is still available.', error);
+        showToast('Post saved locally but could not be submitted for review.', 'warning');
+      });
+  }
   addTeamActivity('shared something in the Faith Feed', icon || '📝');
   addLocalNotification(sourcePost ? 'reshare' : 'post', null, sourcePost ? `You reshared ${sourcePost.name}'s post.` : 'Your post is live in Faith Feeds.');
   saveState();
@@ -2275,7 +2389,7 @@ el('faithFeedPostBtn').addEventListener('click', () => {
 el('shareVerseBtn').addEventListener('click', () => {
   const verseText = el('verseText').textContent;
   const verseRef = el('verseRef').textContent;
-  openShareCaptionModal(`shared today's verse: ${verseText} ${verseRef}`, '📖', 'Verse shared to Faith Feeds!');
+  openShareCaptionModal(`shared today's verse: ${verseText} ${verseRef}`, '📖', 'Verse shared to Faith Feeds!', null, null, 'verse');
 });
 
 el('shareProgressBtn').addEventListener('click', () => {
@@ -2283,7 +2397,7 @@ el('shareProgressBtn').addEventListener('click', () => {
   const nextStage = getNextStageThreshold();
   const target = nextStage ? nextStage.min : CONFIG.fullBloomThreshold;
   const progressLabel = nextStage ? `${Math.floor(state.treeProgress - currentStage.min)} / ${target - currentStage.min} to ${nextStage.label}` : `Old Tree • ${state.pointsForFruit}/${CONFIG.pointsPerFruit} to next fruit`;
-  openShareCaptionModal(`shared my tree progress: ${currentStage.label} • ${progressLabel} 🌱`, '🌳', 'Tree progress shared to Faith Feeds!');
+  openShareCaptionModal(`shared my tree progress: ${currentStage.label} • ${progressLabel} 🌱`, '🌳', 'Tree progress shared to Faith Feeds!', null, null, 'progress');
 });
 
 /* ---------------- Create / Join / Leave team ---------------- */
@@ -2484,10 +2598,7 @@ function renderProfileSafety() {
   el('notificationList').innerHTML = notifications.length
     ? notifications.map(notification => `<div class="notification-row ${notification.read ? '' : 'unread'}"><strong>${escapeHtml(notification.message)}</strong><time>${formatRelativeTime(notification.createdAt)}</time></div>`).join('')
     : '<p class="empty-state">No notifications yet.</p>';
-  const pendingRequests = state.pulseRequests.filter(request => request.fromUid === LOCAL_AUTHOR_ID && request.status === 'pending');
-  el('pulseRequestList').innerHTML = pendingRequests.length
-    ? pendingRequests.map(request => `<div class="notification-row"><strong>Pending: ${escapeHtml(request.targetName)}</strong><button class="btn small cancel-pulse-btn" data-request-id="${request.id}" type="button">Cancel</button></div>`).join('')
-    : '<p class="empty-state">No pending PULSE Requests.</p>';
+  renderFaithFriends();
 }
 
 el('profileVisibilityInput').addEventListener('change', () => {
@@ -2503,20 +2614,48 @@ el('markNotificationsReadBtn').addEventListener('click', () => {
   renderProfileSafety();
 });
 
-el('sendPulseRequestBtn').addEventListener('click', () => {
+el('sendPulseRequestBtn').addEventListener('click', async () => {
   const targetUid = el('pulseTargetUidInput').value.trim();
   if (!targetUid) { showToast('Enter a profile ID first.', 'warning'); return; }
+  if (firebaseSyncReady && window.GrowingSeedFirebase?.sendPulseRequest) {
+    try {
+      await window.GrowingSeedFirebase.sendPulseRequest(targetUid);
+      el('pulseTargetUidInput').value = '';
+      showToast('Faith Friend request sent.', 'success');
+      await loadFaithFriends();
+    } catch (error) {
+      showToast(error.message || 'Could not send the Faith Friend request.', 'error');
+    }
+    return;
+  }
   if (sendLocalPulseRequest(targetUid, targetUid)) {
     el('pulseTargetUidInput').value = '';
     renderProfileSafety();
   }
 });
 
-el('pulseRequestList').addEventListener('click', event => {
-  const button = event.target.closest('.cancel-pulse-btn');
+el('pulseRequestList').addEventListener('click', async event => {
+  const button = event.target.closest('button[data-request-id]');
   if (!button) return;
-  cancelLocalPulseRequest(button.dataset.requestId);
-  renderProfileSafety();
+  const requestId = button.dataset.requestId;
+  const isAccept = button.classList.contains('accept-friend-btn');
+  const isDecline = button.classList.contains('decline-friend-btn');
+  try {
+    if (firebaseSyncReady && window.GrowingSeedFirebase?.respondToPulseRequest && (isAccept || isDecline)) {
+      await window.GrowingSeedFirebase.respondToPulseRequest(requestId, isAccept ? 'accepted' : 'declined');
+      showToast(isAccept ? 'Faith Friend added.' : 'Friend request declined.', 'success');
+      await loadFaithFriends();
+    } else if (firebaseSyncReady && window.GrowingSeedFirebase?.cancelPulseRequest && button.classList.contains('cancel-pulse-btn')) {
+      await window.GrowingSeedFirebase.cancelPulseRequest(requestId);
+      showToast('Friend request cancelled.', 'info');
+      await loadFaithFriends();
+    } else if (button.classList.contains('cancel-pulse-btn')) {
+      cancelLocalPulseRequest(requestId);
+      loadFaithFriends();
+    }
+  } catch (error) {
+    showToast(error.message || 'Could not update the friend request.', 'error');
+  }
 });
 
 /* ---------------- Avatar picker (modal-only, locked + purchasable) ---------------- */
